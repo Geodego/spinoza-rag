@@ -105,7 +105,6 @@ model downloads. CI currently tests the scaffold only.
 ```text
 src/spinoza_rag/          Installable application package
 tests/                   Automated tests
-docs/engineering-audit.md Engineering decisions and audit findings
 AGENTS.md                Shared coding-agent guidance
 CLAUDE.md                Imports AGENTS.md for Claude Code
 pyproject.toml           Metadata, dependencies, and tool configuration
