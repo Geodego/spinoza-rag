@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# PyCharm
+.idea/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Corpus et données locales RAG
+data/
+storage/
+chroma/
+*.pdf
+pages.jsonl
+chunks.jsonl
+
+# macOS
+.DS_Store

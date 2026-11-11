@@ -1,0 +1,23 @@
+repos:
+  - repo: local
+    hooks:
+      - id: conventional-commits
+        name: Validate commit message
+        entry: uv run --no-sync cz check --commit-msg-file
+        language: system
+        stages: [commit-msg]
+
+      - id: ruff-lint
+        name: Ruff lint
+        entry: uv run --no-sync ruff check
+        language: system
+        types: [python]
+        stages: [pre-commit]
+
+      - id: ruff-format
+        name: Ruff format
+        entry: uv run --no-sync ruff format --check
+        language: system
+        types: [python]
+        stages: [pre-commit]
+

@@ -1,0 +1,45 @@
+[project]
+name = "spinoza-rag"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.19.3",
+    "prek>=0.5.10",
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+message_length_limit = 72
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E4",  # Import errors
+    "E7",  # Syntax and statement conventions
+    "E9",  # Runtime and syntax errors
+    "F",   # Pyflakes
+    "I",   # Import sorting
+    "UP",  # Modern Python syntax
+    "B",   # Common bug patterns
+    "D",  # Docstring conventions
+]
+
+ignore = [
+    "D104",  # Allow undocumented internal packages
+    "D107",  # Do not require __init__ docstrings
+    "D417",  # Do not require documenting every argument
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D"]
