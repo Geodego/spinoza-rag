@@ -8,7 +8,6 @@ import argparse
 import hashlib
 import json
 import logging
-import tempfile
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -19,6 +18,8 @@ from typing import Literal
 import pypdf
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
+
+from spinoza_rag.artifacts import publish_artifacts
 
 # Bump when the output format or extraction behavior changes.
 _SCHEMA_VERSION = 1
@@ -254,35 +255,16 @@ def _serialize(document: ExtractedDocument) -> tuple[bytes, dict[str, object]]:
     return pages_jsonl, report
 
 
-def _matches(output_dir: Path, artifacts: dict[str, bytes]) -> bool:
-    return (
-        output_dir.is_dir()
-        and {path.name for path in output_dir.iterdir()} == set(artifacts)
-        and all(
-            not (output_dir / name).is_symlink()
-            and (output_dir / name).is_file()
-            and (output_dir / name).read_bytes() == content
-            for name, content in artifacts.items()
-        )
-    )
+def load_extraction(output_dir: Path) -> tuple[ExtractedDocument, dict[str, object]]:
+    """Read verified page artifacts without opening or re-extracting the PDF.
 
-
-def _load_existing_extraction(
-    source: Path,
-    output_dir: Path,
-    min_page_characters: int,
-    extraction_mode: Literal["plain", "layout"],
-) -> dict[str, object] | None:
-    """Verify cached artifacts without parsing the PDF or rewriting files."""
-    if output_dir.is_symlink():
-        raise ValueError("The output directory must not be a symlink.")
-    if not output_dir.exists():
-        return None
+    The recorded extractor version may differ from the installed one. Integrity,
+    provenance, diagnostics, and the supported schema are still validated.
+    """
     try:
-        if not output_dir.is_dir() or {p.name for p in output_dir.iterdir()} != {
-            "pages.jsonl",
-            "report.json",
-        }:
+        if output_dir.is_symlink() or not output_dir.is_dir():
+            raise ValueError("expected a real extraction directory")
+        if {p.name for p in output_dir.iterdir()} != {"pages.jsonl", "report.json"}:
             raise ValueError("expected exactly pages.jsonl and report.json")
         if any(
             (output_dir / name).is_symlink() for name in ("pages.jsonl", "report.json")
@@ -293,22 +275,21 @@ def _load_existing_extraction(
             type(report["schema_version"]) is not int
             or report["schema_version"] != _SCHEMA_VERSION
         ):
-            raise ValueError("output schema changed")
-        if report["extraction"] != _extraction_settings(
-            min_page_characters, extraction_mode
-        ):
-            raise ValueError("extractor version or settings changed")
-        data = source.read_bytes()
-        identity = report["document"]
+            raise ValueError("unsupported output schema")
+        settings = report["extraction"]
         if (
-            identity["document_id"] != "sha256:" + hashlib.sha256(data).hexdigest()
-            or identity["source_file"] != source.name
-            or identity["source_size_bytes"] != len(data)
+            settings["library"] != "pypdf"
+            or not isinstance(settings["version"], str)
+            or settings["mode"] not in ("plain", "layout")
+            or settings["normalization"] != "line_endings_only"
+            or type(settings["min_page_characters"]) is not int
+            or settings["min_page_characters"] < 0
         ):
-            raise ValueError("source PDF changed")
+            raise ValueError("invalid extraction settings")
+        identity = report["document"]
         if not isinstance(identity["metadata"], dict) or any(
-            not isinstance(key, str) or not isinstance(value, str)
-            for key, value in identity["metadata"].items()
+            not isinstance(k, str) or not isinstance(v, str)
+            for k, v in identity["metadata"].items()
         ):
             raise ValueError("invalid document metadata")
         raw = (output_dir / "pages.jsonl").read_bytes()
@@ -318,6 +299,7 @@ def _load_existing_extraction(
         if not rows or any(
             not isinstance(row["text"], str)
             or row["schema_version"] != _SCHEMA_VERSION
+            or type(row["page_number"]) is not int
             or row["page_number"] != number
             or row["document_id"] != identity["document_id"]
             or row["source_file"] != identity["source_file"]
@@ -331,25 +313,56 @@ def _load_existing_extraction(
             metadata=identity["metadata"],
             pages=tuple(
                 ExtractedPage(
-                    page_number=row["page_number"],
-                    text=row["text"],
-                    issues=tuple(row["diagnostics"]["issues"]),
-                    parser_warnings=tuple(row["diagnostics"]["parser_warnings"]),
-                    error=row["diagnostics"]["error"],
+                    row["page_number"],
+                    row["text"],
+                    tuple(row["diagnostics"]["issues"]),
+                    tuple(row["diagnostics"]["parser_warnings"]),
+                    row["diagnostics"]["error"],
                 )
                 for row in rows
             ),
             parser_warnings=tuple(report["parser_warnings"]),
-            min_page_characters=min_page_characters,
-            extraction_mode=extraction_mode,
+            min_page_characters=settings["min_page_characters"],
+            extraction_mode=settings["mode"],
         )
-        if _serialize(document) != (raw, report):
+        expected_raw, expected_report = _serialize(document)
+        expected_report["extraction"] = settings
+        if expected_raw != raw or expected_report != report:
             raise ValueError("page diagnostics or report are inconsistent")
-        return report
+        return document, report
     except (AttributeError, KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            f"Invalid extraction artifacts in {output_dir}: {error}"
+        ) from error
+
+
+def _load_existing_extraction(
+    source: Path,
+    output_dir: Path,
+    min_page_characters: int,
+    extraction_mode: Literal["plain", "layout"],
+) -> dict[str, object] | None:
+    if output_dir.is_symlink():
+        raise ValueError("The output directory must not be a symlink.")
+    if not output_dir.exists():
+        return None
+    try:
+        document, report = load_extraction(output_dir)
+        if report["extraction"] != _extraction_settings(
+            min_page_characters, extraction_mode
+        ):
+            raise ValueError("extractor version or settings changed")
+        data = source.read_bytes()
+        if (
+            document.document_id != "sha256:" + hashlib.sha256(data).hexdigest()
+            or document.source_file != source.name
+            or document.source_size_bytes != len(data)
+        ):
+            raise ValueError("source PDF changed")
+        return report
+    except ValueError as error:
         raise FileExistsError(
-            f"{output_dir} cannot be reused ({error}); choose a new --output-dir. "
-            "Existing files were preserved."
+            f"{output_dir} cannot be reused ({error}); choose a new --output-dir. Existing files were preserved."
         ) from error
 
 
@@ -377,21 +390,7 @@ def write_extraction(
             json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
         ).encode("utf-8"),
     }
-    if output_dir.exists():
-        if _matches(output_dir, artifacts):
-            return report
-        raise FileExistsError(
-            f"{output_dir} already exists with different or incomplete contents; "
-            "choose a new --output-dir. Existing files were preserved."
-        )
-    output_dir.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(
-        prefix=f".{output_dir.name}-", dir=output_dir.parent
-    ) as temporary:
-        staging = Path(temporary)
-        for name, content in artifacts.items():
-            (staging / name).write_bytes(content)
-        staging.rename(output_dir)
+    publish_artifacts(output_dir, artifacts)
     return report
 
 

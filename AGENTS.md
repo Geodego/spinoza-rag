@@ -39,8 +39,11 @@ uv build --no-sources
 - Put application code in src/spinoza_rag/ and tests in tests/.
 - Test installed imports; do not add sys.path or PYTHONPATH workarounds.
 - Unit tests must run without Ollama, model downloads, or the real corpus.
-- Add synthetic behavior tests with features. Current tests cover packaging and
-  PDF ingestion; no embeddings, retrieval, inference, or RAG evaluation exists yet.
+- Add synthetic behavior tests with features. Tests cover PDF ingestion, chunking,
+  persistent indexing, and retrieval with fake embeddings; never require Ollama.
+- Indexing and search must read persisted page/chunk artifacts, never the PDF.
+  Preserve configuration fingerprints and reject stale or incompatible indexes.
+- Keep search retrieval-only until answer generation is explicitly requested.
 - Fix lint, format, and test failures before reporting completion or committing.
   Report checks actually executed and any unverified results.
 - Never bypass Git hooks or quality checks without explicit authorization.
