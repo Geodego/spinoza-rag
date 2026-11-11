@@ -367,8 +367,33 @@ seven fragments contain fewer than 20 tokens. These are measurement results for
 the current local PDF, not guarantees about other documents. The default can be
 evaluated and changed later without mixing its index with another configuration.
 
-The index is being built and validated locally; final duration, storage size, and
-retrieval examples will be recorded after that run completes. Semantic accuracy
+The first full index build embedded all 1,194 chunks as 1,024-dimensional vectors
+in 29 minutes 37 seconds (`indexing_seconds` 1,776.9, batch size 8) on the macOS
+Intel machine with Ollama 0.40.16. The Chroma directory occupies
+about 21 MB. Rerunning indexing reported `embedded_this_run: 0` and
+`reused: 1194` in under one second and left the index manifest byte-identical.
+Chroma's SQLite file still changes on reopen, apparently from internal
+bookkeeping, so its checksum is not a reliable "unchanged" signal. After the
+reruns, Chroma still held 1,194 embeddings with a maximum write sequence of
+1,194, one write per chunk.
+
+Six French questions were run in a fresh process with an embedder wrapper that
+counted inputs. Each search embedded exactly one text, the question, and took
+about 0.9 seconds after startup. All 30 top-5 passages carried the source
+filename, PDF page, lecture date, and chunk ID. Each passage's whitespace-
+normalized text was also found on its cited page in the saved page artifacts.
+Spot-check results, with PDF pages and cosine distances of the top passages:
+
+| Question | Top PDF pages | Distances | Observation |
+| --- | --- | --- | --- |
+| Joie et tristesse | 66, 291, 292 | 0.21–0.25 | On topic |
+| Notions communes | 308, 306, 304 | 0.17–0.25 | On topic, one lecture |
+| Troisième genre de connaissance | 451, 314, 446 | 0.13–0.25 | On topic |
+| Mal, morale et éthique | 35, 86, 137, 151 | 0.19–0.23 | On topic |
+| Conatus | 69, then unrelated | 0.30, ~0.40 | One relevant hit, then weak |
+| Puissance et pouvoir | 47, 64 | 0.30–0.32 | Related, no direct contrast |
+
+These are informal observations, not a benchmark. Semantic accuracy
 is not established by fake-embedding tests, and there is no formal gold-set
 retrieval evaluation yet. Page boundaries, short fragments, retained headers,
 and imperfect extraction can affect relevance. No reranking or answer generation
