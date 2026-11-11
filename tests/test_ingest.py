@@ -408,3 +408,159 @@ def test_cli_accepts_layout_mode(make_pdf, tmp_path):
     pages, report = read_artifacts(output)
     assert "synthetic text page" in pages[0]["text"]
     assert report["extraction"]["mode"] == "layout"
+
+
+@pytest.mark.parametrize("mode", ["plain", "layout"])
+def test_cli_reuses_verified_artifacts_without_parsing_pdf(
+    make_pdf, tmp_path, monkeypatch, capsys, mode
+):
+    source = make_pdf(
+        ["A synthetic page with enough text to pass the short-page check."]
+    )
+    output = tmp_path / "results"
+    command = [str(source), "--output-dir", str(output), "--extraction-mode", mode]
+    assert main(command) == 0
+    before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in output.iterdir()}
+    capsys.readouterr()
+
+    def unexpected_parse(*args, **kwargs):
+        pytest.fail("PDF parsing should have been skipped")
+
+    monkeypatch.setattr("spinoza_rag.ingest.PdfReader", unexpected_parse)
+    assert main(command) == 0
+    assert (
+        "Reusing verified artifacts; PDF extraction skipped." in capsys.readouterr().out
+    )
+    assert before == {
+        p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in output.iterdir()
+    }
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["source", "basename", "missing_source", "threshold", "mode", "version", "schema"],
+)
+def test_cli_refuses_outdated_cache_before_parsing_pdf(
+    make_pdf, tmp_path, monkeypatch, change
+):
+    source = make_pdf(["A synthetic original PDF document."])
+    output = tmp_path / "results"
+    command = [str(source), "--output-dir", str(output)]
+    assert main(command) == 0
+    before = {p.name: p.read_bytes() for p in output.iterdir()}
+    if change == "source":
+        make_pdf(["A different synthetic PDF document."])
+    elif change == "basename":
+        source = source.rename(tmp_path / "renamed.pdf")
+        command[0] = str(source)
+    elif change == "missing_source":
+        source.unlink()
+    elif change == "threshold":
+        command.extend(["--min-page-characters", "0"])
+    elif change == "mode":
+        command.extend(["--extraction-mode", "layout"])
+    elif change == "version":
+        monkeypatch.setattr("spinoza_rag.ingest.pypdf.__version__", "next-test-version")
+    else:
+        monkeypatch.setattr("spinoza_rag.ingest._SCHEMA_VERSION", 2)
+
+    def unexpected_parse(*args, **kwargs):
+        pytest.fail("An outdated cache should be rejected before PDF parsing")
+
+    monkeypatch.setattr("spinoza_rag.ingest.PdfReader", unexpected_parse)
+    with pytest.raises(SystemExit) as error:
+        main(command)
+    assert error.value.code == 1
+    assert before == {p.name: p.read_bytes() for p in output.iterdir()}
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "missing_file",
+        "invalid_report",
+        "checksum",
+        "invalid_jsonl",
+        "summary",
+        "page_number",
+        "provenance",
+        "text_type",
+        "metadata_type",
+        "extra_file",
+    ],
+)
+def test_cli_refuses_inconsistent_cache_without_reextracting_or_rewriting(
+    make_pdf, tmp_path, monkeypatch, damage
+):
+    source = make_pdf(["A synthetic document for integrity checks."])
+    output = tmp_path / "results"
+    command = [str(source), "--output-dir", str(output)]
+    assert main(command) == 0
+    rows, report = read_artifacts(output)
+    if damage == "missing_file":
+        (output / "pages.jsonl").unlink()
+    elif damage == "invalid_report":
+        (output / "report.json").write_text("not JSON")
+    elif damage == "checksum":
+        (output / "pages.jsonl").write_text("damaged JSONL")
+    elif damage == "extra_file":
+        (output / "notes.txt").write_text("preserve this note")
+    else:
+        if damage == "summary":
+            report["summary"]["total_pages"] = 99
+        elif damage == "metadata_type":
+            report["document"]["metadata"] = []
+        else:
+            if damage == "page_number":
+                rows[0]["page_number"] = 2
+            elif damage == "provenance":
+                rows[0]["document_id"] = "different-source"
+            elif damage == "text_type":
+                rows[0]["text"] = []
+            raw = (
+                "".join(
+                    json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
+                    for row in rows
+                )
+            ).encode()
+            if damage == "invalid_jsonl":
+                raw = b"not valid JSON\n"
+            (output / "pages.jsonl").write_bytes(raw)
+            report["pages_jsonl_sha256"] = hashlib.sha256(raw).hexdigest()
+        (output / "report.json").write_text(json.dumps(report))
+    before = {p.name: p.read_bytes() for p in output.iterdir()}
+
+    def unexpected_parse(*args, **kwargs):
+        pytest.fail("Invalid cache should be rejected without PDF parsing")
+
+    monkeypatch.setattr("spinoza_rag.ingest.PdfReader", unexpected_parse)
+    with pytest.raises(SystemExit) as error:
+        main(command)
+    assert error.value.code == 1
+    assert before == {p.name: p.read_bytes() for p in output.iterdir()}
+
+
+@pytest.mark.parametrize("outcome", ["empty", "failed"])
+def test_cached_unusable_extraction_retains_failure_status(
+    make_pdf, tmp_path, monkeypatch, capsys, outcome
+):
+    source = make_pdf([None] if outcome == "empty" else ["Synthetic page"])
+    output = tmp_path / "results"
+    command = [str(source), "--output-dir", str(output)]
+    if outcome == "failed":
+
+        def failed_page(*args, **kwargs):
+            raise PdfReadError("synthetic page failure")
+
+        monkeypatch.setattr(PageObject, "extract_text", failed_page)
+    assert main(command) == 1
+    capsys.readouterr()
+
+    def unexpected_parse(*args, **kwargs):
+        pytest.fail("Cached diagnostics should not trigger PDF parsing")
+
+    monkeypatch.setattr("spinoza_rag.ingest.PdfReader", unexpected_parse)
+    assert main(command) == 1
+    text = capsys.readouterr().out
+    assert "PDF extraction skipped" in text
+    assert "Review required" in text

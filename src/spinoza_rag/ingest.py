@@ -20,6 +20,9 @@ import pypdf
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
+# Bump when the output format or extraction behavior changes.
+_SCHEMA_VERSION = 1
+
 _PAGE_ERRORS = (
     PyPdfError,
     ValueError,
@@ -197,10 +200,22 @@ def _page_diagnostics(page: ExtractedPage) -> dict[str, object]:
     }
 
 
+def _extraction_settings(
+    min_page_characters: int, extraction_mode: Literal["plain", "layout"]
+) -> dict[str, object]:
+    return {
+        "library": "pypdf",
+        "version": pypdf.__version__,
+        "mode": extraction_mode,
+        "normalization": "line_endings_only",
+        "min_page_characters": min_page_characters,
+    }
+
+
 def _serialize(document: ExtractedDocument) -> tuple[bytes, dict[str, object]]:
     rows = [
         {
-            "schema_version": 1,
+            "schema_version": _SCHEMA_VERSION,
             "document_id": document.document_id,
             "source_file": document.source_file,
             "page_number": page.page_number,
@@ -213,20 +228,16 @@ def _serialize(document: ExtractedDocument) -> tuple[bytes, dict[str, object]]:
         json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows
     ).encode("utf-8")
     report: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": _SCHEMA_VERSION,
         "document": {
             "document_id": document.document_id,
             "source_file": document.source_file,
             "source_size_bytes": document.source_size_bytes,
             "metadata": document.metadata,
         },
-        "extraction": {
-            "library": "pypdf",
-            "version": pypdf.__version__,
-            "mode": document.extraction_mode,
-            "normalization": "line_endings_only",
-            "min_page_characters": document.min_page_characters,
-        },
+        "extraction": _extraction_settings(
+            document.min_page_characters, document.extraction_mode
+        ),
         "summary": {
             "total_pages": len(document.pages),
             "pages_with_text": sum(bool(page.text.strip()) for page in document.pages),
@@ -254,6 +265,92 @@ def _matches(output_dir: Path, artifacts: dict[str, bytes]) -> bool:
             for name, content in artifacts.items()
         )
     )
+
+
+def _load_existing_extraction(
+    source: Path,
+    output_dir: Path,
+    min_page_characters: int,
+    extraction_mode: Literal["plain", "layout"],
+) -> dict[str, object] | None:
+    """Verify cached artifacts without parsing the PDF or rewriting files."""
+    if output_dir.is_symlink():
+        raise ValueError("The output directory must not be a symlink.")
+    if not output_dir.exists():
+        return None
+    try:
+        if not output_dir.is_dir() or {p.name for p in output_dir.iterdir()} != {
+            "pages.jsonl",
+            "report.json",
+        }:
+            raise ValueError("expected exactly pages.jsonl and report.json")
+        if any(
+            (output_dir / name).is_symlink() for name in ("pages.jsonl", "report.json")
+        ):
+            raise ValueError("artifact files must not be symlinks")
+        report = json.loads((output_dir / "report.json").read_bytes())
+        if (
+            type(report["schema_version"]) is not int
+            or report["schema_version"] != _SCHEMA_VERSION
+        ):
+            raise ValueError("output schema changed")
+        if report["extraction"] != _extraction_settings(
+            min_page_characters, extraction_mode
+        ):
+            raise ValueError("extractor version or settings changed")
+        data = source.read_bytes()
+        identity = report["document"]
+        if (
+            identity["document_id"] != "sha256:" + hashlib.sha256(data).hexdigest()
+            or identity["source_file"] != source.name
+            or identity["source_size_bytes"] != len(data)
+        ):
+            raise ValueError("source PDF changed")
+        if not isinstance(identity["metadata"], dict) or any(
+            not isinstance(key, str) or not isinstance(value, str)
+            for key, value in identity["metadata"].items()
+        ):
+            raise ValueError("invalid document metadata")
+        raw = (output_dir / "pages.jsonl").read_bytes()
+        if report["pages_jsonl_sha256"] != hashlib.sha256(raw).hexdigest():
+            raise ValueError("JSONL checksum mismatch")
+        rows = [json.loads(line) for line in raw.decode("utf-8").splitlines()]
+        if not rows or any(
+            not isinstance(row["text"], str)
+            or row["schema_version"] != _SCHEMA_VERSION
+            or row["page_number"] != number
+            or row["document_id"] != identity["document_id"]
+            or row["source_file"] != identity["source_file"]
+            for number, row in enumerate(rows, start=1)
+        ):
+            raise ValueError("invalid page sequence or provenance")
+        document = ExtractedDocument(
+            document_id=identity["document_id"],
+            source_file=identity["source_file"],
+            source_size_bytes=identity["source_size_bytes"],
+            metadata=identity["metadata"],
+            pages=tuple(
+                ExtractedPage(
+                    page_number=row["page_number"],
+                    text=row["text"],
+                    issues=tuple(row["diagnostics"]["issues"]),
+                    parser_warnings=tuple(row["diagnostics"]["parser_warnings"]),
+                    error=row["diagnostics"]["error"],
+                )
+                for row in rows
+            ),
+            parser_warnings=tuple(report["parser_warnings"]),
+            min_page_characters=min_page_characters,
+            extraction_mode=extraction_mode,
+        )
+        if _serialize(document) != (raw, report):
+            raise ValueError("page diagnostics or report are inconsistent")
+        return report
+    except (AttributeError, KeyError, TypeError, ValueError) as error:
+        raise FileExistsError(
+            f"{output_dir} cannot be reused ({error}); choose a new --output-dir. "
+            "Existing files were preserved."
+        ) from error
 
 
 def write_extraction(
@@ -330,13 +427,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="plain content-stream order or spatial layout order",
     )
     args = parser.parse_args(argv)
+    if args.min_page_characters < 0:
+        parser.error("--min-page-characters must be non-negative")
     try:
-        document = extract_pdf(
-            args.source,
-            min_page_characters=args.min_page_characters,
-            extraction_mode=args.extraction_mode,
+        report = _load_existing_extraction(
+            args.source, args.output_dir, args.min_page_characters, args.extraction_mode
         )
-        report = write_extraction(document, args.output_dir)
+        if report is None:
+            document = extract_pdf(
+                args.source,
+                min_page_characters=args.min_page_characters,
+                extraction_mode=args.extraction_mode,
+            )
+            report = write_extraction(document, args.output_dir)
+        else:
+            print("Reusing verified artifacts; PDF extraction skipped.")
     except (OSError, *_PAGE_ERRORS) as error:
         parser.exit(1, f"Ingestion failed: {error}\n")
     summary = report["summary"]
@@ -344,9 +449,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(
         f"Artifacts: {args.output_dir / 'pages.jsonl'} and {args.output_dir / 'report.json'}"
     )
-    if any(page.error for page in document.pages) or not any(
-        page.text.strip() for page in document.pages
-    ):
+    if summary["failed_pages"] or not summary["pages_with_text"]:
         print(
             "Review required: page extraction failed or no extractable text was found."
         )
