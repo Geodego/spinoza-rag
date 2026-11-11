@@ -1,18 +1,9 @@
 # Spinoza RAG
 
-A personal learning and portfolio project building fully local
-Retrieval-Augmented Generation (RAG) for Gilles Deleuze's lectures on Spinoza.
+A fully local Retrieval-Augmented Generation (RAG) project for exploring
+Gilles Deleuze's lectures on Spinoza.
 
 The project aims to provide grounded answers to philosophical questions, supported by references to the original lecture transcripts.
-
-## Objectives
-
-- Build a reproducible document ingestion pipeline.
-- Preserve PDF page references throughout extraction, chunking, and retrieval.
-- Implement semantic search over the lecture transcripts.
-- Generate answers grounded in retrieved passages, with verifiable citations.
-- Evaluate retrieval quality and answer faithfulness.
-- Explore LangGraph-based orchestration where it provides measurable benefits.
 
 ## Architecture
 
@@ -39,12 +30,11 @@ persisted index rather than reprocessing the PDF for each query.
 - **pypdf** — Implemented page-aware PDF extraction
 - **Ollama** — Local LLM inference and embeddings
 - **LangChain** — Document processing and retrieval
-- **LangGraph** — Future conditional orchestration, when justified
 - **Chroma** — Persistent vector storage
 - **Ruff** — Linting and formatting
 - **pytest** — Automated testing
 
-pypdf is the only runtime dependency. Ollama, LangChain, LangGraph, and Chroma
+pypdf is the only runtime dependency. Ollama, LangChain, and Chroma
 are planned and are not installed or integrated yet. No embeddings, retrieval,
 or LLM inference is implemented. The aim is a simple, free local workflow, with
 architecture, source traceability, tests, evaluation, and measured tradeoffs
@@ -174,8 +164,18 @@ errors use argparse's standard exit 2. Encrypted and zero-page PDFs are rejected
 ### Reruns and Output Safety
 
 Results contain no run timestamps. With the same PDF basename, settings, and
-locked extractor version, reruns produce the same bytes and leave matching
-output files untouched. The component never appends page records.
+locked extractor version, the CLI verifies the existing PDF fingerprint,
+settings, JSONL checksum, page sequence/provenance, and report consistency before
+invoking pypdf. Valid artifacts are reused without PDF extraction or file
+rewrites; the CLI prints `Reusing verified artifacts; PDF extraction skipped.`
+Only a missing destination triggers extraction. The component never appends
+page records. Validation still reads the PDF bytes and existing JSON artifacts.
+
+Incomplete, corrupt, or outdated artifacts fail early without re-extraction or
+overwriting. Select a new destination for changed PDFs/settings or repairs.
+Cached runs retain the original diagnostic summary and failure exit status.
+The output schema version is also the extraction revision: bump it when changing
+extraction behavior so older results cannot be silently reused.
 
 Both artifacts are written into a temporary sibling directory before a single
 rename publishes the directory. Write or publication errors leave no partial
@@ -263,8 +263,7 @@ extraction diagnostics, safe reruns, and synthetic behavior tests.
 
 Next: inspect extraction quality on the real PDF, then develop and evaluate
 page-aware chunking. Embeddings, indexing, source-grounded question answering,
-and systematic RAG evaluation are later milestones. Introduce LangGraph only
-when it demonstrably improves the simplest reliable pipeline.
+and systematic RAG evaluation are later milestones.
 
 ## Corpus and Licensing
 
