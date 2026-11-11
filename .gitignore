@@ -1,22 +1,38 @@
-# Python
-.venv/
+# Python environments, caches, and build output
+.venv*/
 __pycache__/
+*.py[cod]
 .pytest_cache/
-*.pyc
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
 
-# PyCharm
+# Editors and local coding-agent preferences
 .idea/
+.vscode/
+.claude/settings.local.json
+CLAUDE.local.md
+AGENTS.override.md
 
 # Secrets
 .env
 .env.*
 !.env.example
 
-# Corpus et données locales RAG
-data/
-storage/
-chroma/
+# Local corpus, models, and generated RAG artifacts
+/data/
+/storage/
+/chroma/
+/embeddings/
+/indexes/
+/models/
 *.pdf
+*.gguf
 pages.jsonl
 chunks.jsonl
 

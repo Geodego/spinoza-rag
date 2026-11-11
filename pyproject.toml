@@ -1,8 +1,14 @@
 [project]
 name = "spinoza-rag"
 version = "0.1.0"
-requires-python = ">=3.12"
+description = "Local retrieval-augmented exploration of Deleuze's lectures on Spinoza"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
 dependencies = []
+
+[build-system]
+requires = ["uv_build==0.12.1"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
@@ -12,9 +18,17 @@ dev = [
     "ruff>=0.17.4",
 ]
 
+[tool.uv]
+required-version = ">=0.12.1,<0.13"
+
 [tool.commitizen]
 name = "cz_conventional_commits"
 message_length_limit = 72
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib", "--strict-config", "--strict-markers", "-ra"]
+filterwarnings = ["error"]
 
 [tool.ruff]
 target-version = "py312"
@@ -29,13 +43,12 @@ select = [
     "I",   # Import sorting
     "UP",  # Modern Python syntax
     "B",   # Common bug patterns
-    "D",  # Docstring conventions
+    "D",   # Docstring conventions
 ]
-
 ignore = [
-    "D104",  # Allow undocumented internal packages
-    "D107",  # Do not require __init__ docstrings
-    "D417",  # Do not require documenting every argument
+    "D104",  # Package __init__.py files may omit docstrings
+    "D107",  # Do not require __init__ method docstrings
+    "D417",  # Do not repeat every argument in docstrings
 ]
 
 [tool.ruff.lint.pydocstyle]
