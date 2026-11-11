@@ -1,6 +1,7 @@
 # Spinoza RAG
 
-A fully local Retrieval-Augmented Generation (RAG) project for exploring Gilles Deleuze's lectures on Spinoza.
+A personal learning and portfolio project building fully local
+Retrieval-Augmented Generation (RAG) for Gilles Deleuze's lectures on Spinoza.
 
 The project aims to provide grounded answers to philosophical questions, supported by references to the original lecture transcripts.
 
@@ -15,11 +16,14 @@ The project aims to provide grounded answers to philosophical questions, support
 
 ## Architecture
 
-The application separates document ingestion from question answering.
+PDF extraction is implemented. Chunking, indexing, and question answering are
+planned and remain separate stages.
 
 **Offline ingestion**
 
-PDF → Text extraction → Page-aware chunking → Local embeddings → Persistent vector index
+Implemented: PDF → Page-aware JSONL + extraction diagnostics
+
+Planned: JSONL → Page-aware chunking → Ollama embeddings → Persistent vector index
 
 **Question answering**
 
@@ -32,7 +36,7 @@ persisted index rather than reprocessing the PDF for each query.
 
 - **Python 3.12** — Application development
 - **uv** — Dependency and environment management
-- **PyMuPDF** — Planned page-aware PDF extraction
+- **pypdf** — Implemented page-aware PDF extraction
 - **Ollama** — Local LLM inference and embeddings
 - **LangChain** — Document processing and retrieval
 - **LangGraph** — Future conditional orchestration, when justified
@@ -40,9 +44,11 @@ persisted index rather than reprocessing the PDF for each query.
 - **Ruff** — Linting and formatting
 - **pytest** — Automated testing
 
-Ollama, PyMuPDF, LangChain, LangGraph, and Chroma are planned; none are
-installed or integrated yet. Python, uv, Ruff, and pytest are configured.
-The current scaffold has no runtime dependencies and implements no RAG behavior.
+pypdf is the only runtime dependency. Ollama, LangChain, LangGraph, and Chroma
+are planned and are not installed or integrated yet. No embeddings, retrieval,
+or LLM inference is implemented. The aim is a simple, free local workflow, with
+architecture, source traceability, tests, evaluation, and measured tradeoffs
+providing the technical substance.
 
 ## Development Setup
 
@@ -96,15 +102,16 @@ uv build --no-sources
 
 CI checks Linux using locked dependencies and a non-editable package
 installation; local verification covers macOS Intel. The smoke test verifies
-imports and installed distribution metadata from outside the checkout. Add unit tests as application behavior is
-implemented. Unit tests must not depend on the real corpus, running Ollama, or
-model downloads. CI currently tests the scaffold only.
+imports and installed distribution metadata from outside the checkout. Synthetic
+PDF tests exercise extraction, diagnostics, reruns, and failure handling. Tests
+run without the real corpus, Ollama, model downloads, or network access.
 
 ## Repository Layout
 
 ```text
 src/spinoza_rag/          Installable application package
-tests/                   Automated tests
+src/spinoza_rag/ingest.py PDF extraction, persistence, and standalone CLI
+tests/                   Synthetic ingestion and packaging tests
 AGENTS.md                Shared coding-agent guidance
 CLAUDE.md                Imports AGENTS.md for Claude Code
 pyproject.toml           Metadata, dependencies, and tool configuration
@@ -114,6 +121,112 @@ uv.lock                  Committed dependency resolution
 `AGENTS.md` is the shared source of repository conventions for Codex and
 Claude Code. `CLAUDE.md` explicitly imports it so the same guidance is available
 across Claude Code versions. No global agent configuration is required.
+
+## PDF Preprocessing and Ingestion
+
+Place your locally obtained PDF at `data/spinoza.pdf`, then run from the repository
+root:
+
+```sh
+uv sync --locked
+uv run --locked python -m spinoza_rag.ingest
+```
+
+No corpus is bundled. If `data/spinoza.pdf` is absent, the command reports the
+missing file without publishing output. Tests generate their own synthetic PDFs.
+
+The default destination is `storage/ingestion/`, containing:
+
+- `pages.jsonl`: one UTF-8 JSON object per physical PDF page, including empty or
+  failed pages. Each has `schema_version`, `document_id`, `source_file`,
+  `page_number` (one-based), `text`, and `diagnostics`.
+- `report.json`: source SHA-256 identity and size, PDF metadata (title, author,
+  subject, keywords, creator, producer, and raw date strings when available),
+  pypdf version, extraction settings (including mode), page counts, per-page diagnostics, parser
+  warnings, and a SHA-256 digest of the exact JSONL bytes.
+
+Only the source basename is persisted, not a machine-specific absolute path.
+`document_id` is `sha256:<PDF byte digest>`; moving or renaming a source does not
+change its identity. A changed PDF has a new identity. Page numbers refer to PDF
+positions, not printed page labels. Future chunks must retain these identifiers.
+
+Diagnostics flag:
+
+- `empty_text`: blank, whitespace-only, or image-only pages with no extracted text.
+- `short_text`: fewer than 40 non-whitespace characters by default.
+- `replacement_characters` or `control_characters`: suspicious decoded text.
+- `parser_warning`: pypdf recovered from an issue while processing a page.
+- `extraction_error`: a page could not be extracted; its record retains its page
+  number and error, and later pages are still processed.
+
+The report's summary includes empty, failed, text-bearing, and review-page
+counts. Document-level parser/metadata warnings are retained separately. Review
+signals are heuristics, not proof of quality: a legitimate title page may be
+short, and plausible-looking text can still have incorrect reading order.
+
+The CLI prints the summary and artifact paths, never the extracted text. Exit 0
+means extraction completed without failed pages and at least one page has text;
+empty/short-page and other review flags may still exist. Exit 1 means an input or
+output error, a page extraction failure, or no extractable text anywhere. In the
+last two cases, artifacts are still published for diagnosis. Argument syntax
+errors use argparse's standard exit 2. Encrypted and zero-page PDFs are rejected.
+
+### Reruns and Output Safety
+
+Results contain no run timestamps. With the same PDF basename, settings, and
+locked extractor version, reruns produce the same bytes and leave matching
+output files untouched. The component never appends page records.
+
+Both artifacts are written into a temporary sibling directory before a single
+rename publishes the directory. Write or publication errors leave no partial
+new destination. Existing output must match both expected files exactly;
+changed inputs/settings, incomplete output, or additional files cause a refusal
+without changing existing files. Choose a new destination when re-extracting a
+changed input or testing different settings:
+
+```sh
+uv run --locked python -m spinoza_rag.ingest data/spinoza.pdf \
+  --output-dir storage/ingestion-v2 --min-page-characters 40
+```
+
+Use `--min-page-characters 0` to disable only the short-text heuristic. This is a
+sequential local component; concurrent writers are outside its scope.
+
+For the locally provided lecture PDF, use layout mode in a separate destination:
+
+```sh
+uv run --locked python -m spinoza_rag.ingest data/spinoza.pdf \
+  --extraction-mode layout --output-dir storage/ingestion-layout
+```
+
+The first plain-mode run extracted 531 pages without empty pages or parser
+errors, but spot checks found spaces inside words. Layout mode fixes those
+sampled word splits and orders page-number footers after the body text. It also
+adds layout whitespace. The default remains `plain` for reproducibility of the
+original run; mode selection is explicit and recorded in the report. The
+original plain output is preserved. No heuristic report replaces visual review
+of representative PDF passages and reading order.
+
+### Extraction Decisions and Limits
+
+`extract_pdf()` performs extraction without writing artifacts;
+`write_extraction()` handles serialization and publication. No chunking, vector
+index, orchestration framework, or generic backend abstraction is introduced.
+
+[pypdf](https://pypdf.readthedocs.io/en/stable/user/extract-text.html) was selected
+as a pure-Python, [BSD-licensed](https://github.com/py-pdf/pypdf/blob/main/LICENSE)
+starting point. Tests verify French accents, page provenance, metadata, and
+failure behavior. The actual lecture PDF has been processed locally; sampled plain and layout
+results were compared as described above. Full transcription accuracy and complex
+reading order remain unverified. Inspect representative passages against the PDF
+before choosing normalization or chunking rules.
+
+Plain extraction normalizes only CRLF/CR line endings to LF. It preserves accents,
+line breaks, headers, footers, and hyphenation; it does not infer paragraphs or
+remove repeated text. pypdf performs no OCR, so scanned pages need a separate
+future decision. The source and extracted text are held in memory, which is
+appropriate for this initial single-document component; large-document memory
+and extraction performance have not been systematically benchmarked.
 
 ## Dependency Maintenance
 
@@ -145,9 +258,13 @@ configuration is implemented, documenting only settings the code consumes.
 
 **Work in progress.**
 
-The initial development focuses on document extraction, page-level provenance, persistent indexing, and source-grounded question answering.
+Implemented: standalone PDF preprocessing with page-level provenance, JSONL,
+extraction diagnostics, safe reruns, and synthetic behavior tests.
 
-Agentic retrieval strategies and systematic evaluation are planned for subsequent iterations.
+Next: inspect extraction quality on the real PDF, then develop and evaluate
+page-aware chunking. Embeddings, indexing, source-grounded question answering,
+and systematic RAG evaluation are later milestones. Introduce LangGraph only
+when it demonstrably improves the simplest reliable pipeline.
 
 ## Corpus and Licensing
 
@@ -155,8 +272,7 @@ The project is designed around transcripts of Gilles Deleuze's lectures on Spino
 
 The source PDF and extracted text are not included in this repository. Users must provide their own lawfully obtained copy of the material.
 
-The repository contains the Python package scaffold and documentation, not the
-underlying copyrighted lecture transcripts. A code license has not yet been
-chosen; select one before public distribution. Before adding PyMuPDF, review
-its [AGPL/commercial licensing](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright)
-against the intended code license and distribution model.
+The repository contains application code and synthetic test fixtures, not the
+underlying copyrighted lecture transcripts. Source PDFs, extracted text, chunks,
+embeddings, indexes, and models belong in ignored local directories. A code
+license has not yet been chosen; corpus rights remain separate.
