@@ -17,11 +17,29 @@ and measured tradeoffs over new tools, contributor processes, or releases.
 - Do not add application dependencies until a concrete feature requires them.
 - Never commit secrets, source PDFs, models, or generated corpus/index data.
 
+## Engineering knowledge
+
+`docs/knowledge/README.md` indexes reusable lessons about compatibility
+constraints, root causes, and verified workarounds. It explains decisions;
+code, configuration, tests, and uv.lock remain authoritative.
+
+- Before dependency, toolchain, Git hook, CI, or platform work, or when an error
+  looks environmental, scan the index. Read only the entries that apply.
+- After resolving a non-obvious, reusable problem, add or update an entry in
+  the index's format. Skip trivial fixes and anything already documented.
+- Separate verified findings (reproduced, with command and date) from
+  hypotheses. Never present a workaround as verified without evidence.
+- When a change invalidates an entry, update it or mark it `Obsolete` in the
+  same change, along with its index row.
+- Prefer prevention through tests, lock settings, or configuration; record the
+  reasoning in an entry, not as a substitute for the safeguard.
+
 ## Setup and checks
 
 Use Python 3.12, uv, and current Git (at least 2.28). See README.md if an older
 Git on PATH breaks prek. On the audited Mac, use `/usr/bin/git` rather than the
-old `/usr/local/bin/git`. Run from the repository root:
+old `/usr/local/bin/git` (see `docs/knowledge/git-prek-no-relative.md`). Run
+from the repository root:
 
 ```sh
 uv sync --locked

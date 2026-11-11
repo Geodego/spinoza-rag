@@ -108,6 +108,7 @@ src/spinoza_rag/embeddings.py Local Ollama HTTP client
 src/spinoza_rag/index.py Resumable persistent Chroma indexing
 src/spinoza_rag/search.py Retrieval-only CLI
 tests/                   Synthetic ingestion, indexing, and retrieval tests
+docs/knowledge/          Engineering lessons and compatibility notes, indexed
 AGENTS.md                Shared coding-agent guidance
 CLAUDE.md                Imports AGENTS.md for Claude Code
 pyproject.toml           Metadata, dependencies, and tool configuration
@@ -261,10 +262,12 @@ The model download is about 639 MB and the tokenizer about 11.4 MB. Neither is
 stored in Git. Application commands never pull a missing model automatically.
 
 The verified local stack uses Chroma 1.5.9, langchain-text-splitters 1.1.3,
-tokenizers 0.22.2, and Ollama 0.40.16 on macOS Intel. uv constrains Chroma's
-transitive ONNX Runtime dependency below 1.21 only on Intel macOS because later
-releases lack compatible wheels. ONNX is not used for embeddings: Chroma's
-default embedding function is explicitly disabled. Chroma telemetry is disabled.
+tokenizers 0.22.2, and Ollama 0.40.16 on macOS Intel. Recent ONNX Runtime
+releases, a transitive Chroma dependency, have no Intel macOS wheels, so uv must
+resolve for that platform (`required-environments`); the lock currently selects
+ONNX Runtime 1.23.2. See `docs/knowledge/chroma-onnxruntime-intel-macos.md`.
+ONNX is not used for embeddings: Chroma's default embedding function is
+explicitly disabled. Chroma telemetry is disabled.
 The Ollama URL is restricted to HTTP loopback addresses, defaulting to
 `http://127.0.0.1:11434`; environment HTTP proxies are bypassed.
 
