@@ -299,6 +299,25 @@ together. Staleness is checked against saved page/chunk artifacts. If the origin
 PDF changes, explicitly rerun extraction first; indexing and search never read
 that PDF to guess whether extraction is out of date.
 
+Chunk embeddings are stored only in `storage/index/chroma/`. Neither
+`chunks.jsonl` nor the index `manifest.json` contains vectors; the manifest
+records only their dimensions. Each vector is a unit-normalized embedding of
+1,024 float32 values, stored with the chunk ID, text, and provenance metadata.
+Read them back through Chroma, for example with
+`collection.get(include=["embeddings"])`, not from the files.
+
+Treat the `chroma/` directory as one opaque unit and copy, back up, or delete it
+whole. The layout is a Chroma implementation detail, observed with Chroma 1.5.9
+in the current index:
+
+- `chroma.sqlite3` holds IDs, passages, metadata, and a write-ahead log that
+  also stores raw vectors.
+- A UUID-named folder holds the HNSW vector index, written to disk in batches.
+  It held 1,000 of the 1,194 vectors; Chroma replays the remaining 194 from the
+  SQLite log when the index opens.
+
+Copying only the HNSW files would therefore silently lose recent vectors.
+
 ### Chunking Decisions and Provenance
 
 The defaults are 450 Qwen tokens and a 70-token **overlap target**. Tokens are
