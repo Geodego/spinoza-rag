@@ -10,6 +10,7 @@ def test_package_imports_outside_repository(tmp_path):
             "-I",
             "-c",
             "import spinoza_rag; "
+            "from spinoza_rag import agent, chat, provenance, research; "
             "from importlib.metadata import metadata; "
             "assert metadata('spinoza-rag')['Name'] == 'spinoza-rag'",
         ],

@@ -4,12 +4,12 @@
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![Runs locally](https://img.shields.io/badge/inference-local%20%28Ollama%29-informational)
 
-A fully local retrieval system for Gilles Deleuze's lectures on Spinoza. Ask a
-question in French and get the passages that address it, each cited to its
-exact PDF page and lecture date.
+A fully local research CLI for Gilles Deleuze's lectures on Spinoza. Ask a
+question in French and inspect retrieved passages or request a bounded answer
+with source labels, PDF pages and lecture metadata.
 
-The goal is source-grounded answers to philosophical questions. Retrieval is
-implemented; the first human-validated partial retrieval baseline is measured.
+Retrieval and a bounded local answer agent are implemented; the first
+human-validated partial retrieval baseline is measured.
 Everything runs on one machine: no cloud services, no paid APIs, and the corpus
 never leaves the disk.
 
@@ -45,7 +45,7 @@ flowchart LR
     subgraph query["Question time"]
         Q[Question] -->|embed question only| D
         D --> R[Passages + page<br/>and lecture citations]
-        R -.->|planned| L[Local LLM answer]
+        R -->|answer mode, bounded tool loop| L[Ollama qwen3:8b answer]
     end
 ```
 
@@ -71,6 +71,8 @@ Key design decisions:
 - **Layout-mode extraction is the default.** Plain extraction split words
   apart on sampled pages; layout mode fixed them. Both remain reproducible.
 
+Research commands and architecture: [local research agent](docs/research-agent.md).
+
 Details: [PDF extraction](docs/ingestion.md) ·
 [chunking, indexing, and search](docs/indexing-and-search.md) ·
 [configuration](docs/configuration.md).
@@ -84,7 +86,8 @@ Details: [PDF extraction](docs/ingestion.md) ·
   3.12.13; CI runs the tests on Linux. If an old Git breaks the commit hooks, see
   [development](docs/development.md#toolchain).
 - [Ollama](https://ollama.com/) running locally
-- About 650 MB of disk for the embedding model and tokenizer
+- About 650 MB for embeddings and tokenizer; answer mode also needs the
+  installed `qwen3:8b` model (about 5.2 GB)
 - Your own lawfully obtained PDF of the lectures, placed at `data/spinoza.pdf`
   (no corpus is bundled; see [Corpus and licensing](#corpus-and-licensing))
 
@@ -146,7 +149,8 @@ The targeted retrieval follow-up is [deferred](docs/future-improvements.md).
 
 - The official baseline is a small, deliberately selected partial set; its
   exact-page metrics do not establish complete supporting evidence or answer quality.
-- No answer generation, reranking, or hybrid (keyword + vector) search.
+- Agent citations are checked for label resolution, not factual entailment.
+- No reranking or hybrid (keyword + vector) search.
 - Hard page boundaries can split an argument; short fragments and retained
   headers can add noise.
 - Extraction is not OCR, and full transcription accuracy and reading order are
@@ -157,7 +161,8 @@ The targeted retrieval follow-up is [deferred](docs/future-improvements.md).
 
 **Work in progress.** Implemented: page-aware PDF extraction with diagnostics,
 token-aware chunking, local Ollama embeddings, resumable Chroma indexing,
-retrieval-only search, and a reproducible evaluation CLI. Synthetic tests cover
+retrieval-only search, a reproducible evaluation CLI, and a bounded French
+answer agent using LangChain create_agent backed by LangGraph. Synthetic tests cover
 page metrics, annotation status, persistence, restart,
 compatibility checks, errors, and the guarantee that search never re-embeds
 documents.
@@ -170,18 +175,20 @@ changes remain deferred. See
 The adjacent-page retrieval experiment is deferred. Its scope and criteria
 for resuming are recorded in [later improvements](docs/future-improvements.md),
 alongside deferred evaluation design. The next milestone can be scoped
-separately; no retrieval enhancements or answer generation have been implemented.
+separately; no retrieval enhancements have been added.
 
-LangGraph orchestration, agents, and a web interface are out of scope for now.
+Use the [local research CLI](docs/research-agent.md) for context-only retrieval
+or agent answers. A web interface, multi-agent system and persistent memory
+remain out of scope.
 
 ## Technology
 
 Python 3.12 · uv · pypdf · LangChain text splitters with the Qwen3 tokenizer ·
-Ollama (`qwen3-embedding:0.6b`) · Chroma (embedded, cosine) · Ruff · mypy ·
+LangChain agents / LangGraph · Ollama (`qwen3:8b`, `qwen3-embedding:0.6b`) · Chroma (embedded, cosine) · Ruff · mypy ·
 pytest · GitHub Actions
 
-Runtime dependencies are limited to pypdf, LangChain text splitters,
-tokenizers, and Chroma. Chroma's default embedding function and telemetry are
+Runtime dependencies include pypdf, LangChain text splitters and agents,
+langchain-ollama, tokenizers, and Chroma. Chroma's default embedding function and telemetry are
 disabled, and the Ollama URL is restricted to loopback addresses.
 
 ## Development

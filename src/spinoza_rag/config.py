@@ -121,6 +121,7 @@ class AgentSettings:
     model: str = "qwen3:8b"
     max_search_calls: int = 2
     max_model_calls: int = 3
+    recursion_limit: int = 12
     context_bytes: int = 8000
     question_bytes: int = 2000
     query_bytes: int = 1000

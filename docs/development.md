@@ -64,6 +64,8 @@ CI checks Linux using locked dependencies and a non-editable package
 installation; local verification covers macOS Intel. The smoke test verifies
 imports and installed distribution metadata from outside the checkout. Synthetic
 PDF tests exercise extraction, diagnostics, reruns, and failure handling.
+Agent tests use scripted tool-capable models and fake retrieval, including
+parallel requests, failure paths, citation checks and disabled cloud tracing.
 Retrieval tests use synthetic documents, a generated tokenizer, fake embeddings,
 and real local Chroma persistence. Tests run without the corpus, Ollama, or
 model downloads, and use small synthetic fixtures with explicit page numbers
@@ -104,6 +106,10 @@ src/spinoza_rag/chunk.py       Token-aware persistent chunking
 src/spinoza_rag/embeddings.py  Local Ollama HTTP client
 src/spinoza_rag/index.py       Resumable persistent Chroma indexing
 src/spinoza_rag/search.py      Retrieval-only CLI
+src/spinoza_rag/chat.py        Non-thinking loopback ChatOllama integration
+src/spinoza_rag/provenance.py  Stable source labels and serialized evidence budget
+src/spinoza_rag/agent.py       Bounded create_agent execution and local events
+src/spinoza_rag/research.py    Context and French answer CLI modes
 src/spinoza_rag/evaluate.py    Validated/proposed page-level retrieval evaluation
 evaluation/gold.v1.json        Corpus-free candidate questions and supporting pages
 tests/                         Synthetic ingestion, indexing, and retrieval tests
