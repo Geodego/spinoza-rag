@@ -74,9 +74,12 @@ The two-topic run chose queries for conatus and the three kinds of knowledge,
 issued both tool requests in its first model response, and admitted distinct
 sources on PDF pages 69 and 314. It used 3,443 evidence bytes and completed in
 102.99 seconds, with 40.17 seconds of prompt processing and 61.32 seconds of
-generation. Both labels resolved. The passages supported topic definitions and
-some related concepts, but the answer's proposed conatus-as-driving-force
-connection exceeded those sources. Two searches did not establish full support.
+generation. Both labels resolved, but the claim that Deleuze gives conatus a
+central role partly contradicted its cited page-69 passage, which deemphasizes
+that concept. The proposed conatus-as-driving-force connection cited `[S2]`
+(page 314), although that passage does not mention conatus. Label resolution
+therefore coexisted with contradiction and citation misattribution; two searches
+did not establish full support.
 This run issued both searches in one round; a sequential follow-up round is
 covered by the scripted graph tests, not by this run.
 
