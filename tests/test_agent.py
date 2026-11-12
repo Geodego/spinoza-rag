@@ -8,6 +8,7 @@ from langsmith import get_tracing_context
 
 from spinoza_rag import agent
 from spinoza_rag.agent import ResearchError, ResearchSession, research
+from spinoza_rag.config import AGENT
 
 
 class ToolModel(FakeMessagesListChatModel):
@@ -340,3 +341,20 @@ def test_agent_rejects_unknown_label_alongside_known_citation(retrieve, citation
     )
     with pytest.raises(ResearchError, match=r"Unknown citation labels.*S9"):
         research("Question", retrieve, model=model)
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["a" * (AGENT.query_bytes + 1), "é" * (AGENT.query_bytes // 2 + 1)],
+    ids=["ascii", "utf8"],
+)
+def test_context_question_over_query_limit_is_rejected_before_retrieval(question):
+    calls = []
+
+    def recording(query):
+        calls.append(query)
+        return []
+
+    with pytest.raises(ValueError, match=str(AGENT.query_bytes)):
+        research(question, recording)
+    assert calls == []

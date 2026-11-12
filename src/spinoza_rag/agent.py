@@ -176,6 +176,10 @@ def research(
     """
     if not question.strip() or len(question.encode()) > AGENT.question_bytes:
         raise ValueError("Question must be nonempty and within the UTF-8 byte limit.")
+    if model is None and len(question.encode()) > AGENT.query_bytes:
+        raise ValueError(
+            f"Context question exceeds the {AGENT.query_bytes}-byte query limit."
+        )
     session = ResearchSession(retrieve, context_bytes=context_bytes, observer=observer)
     started = monotonic()
     answer: str | None = None

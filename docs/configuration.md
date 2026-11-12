@@ -46,6 +46,7 @@ LangChain supplies agent orchestration backed by LangGraph.
 Agent defaults allow two searches and three model calls per fresh run. The
 source registry admits only complete chunks within 8,000 cumulative UTF-8 bytes
 of serialized evidence, including metadata and labels. Question and search-query
-limits are 2,000 and 1,000 UTF-8 bytes respectively. These settings do not enter
+limits are 2,000 and 1,000 UTF-8 bytes respectively. In context mode, the
+question itself is the search query, so its limit is 1,000 bytes. These settings do not enter
 existing index fingerprints. Generated research artifacts belong in ignored
 `storage/research/`.
