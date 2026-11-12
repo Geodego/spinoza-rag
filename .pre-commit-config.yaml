@@ -51,3 +51,12 @@ repos:
         types_or: [python, pyi, jupyter, toml]
         files: (\.pyi?$|\.ipynb$|(^|/)(pyproject|ruff)\.toml$)
         require_serial: true
+
+      - id: mypy
+        name: mypy
+        entry: uv run --locked mypy
+        language: system
+        # mypy checks the configured files as a whole, not staged files.
+        pass_filenames: false
+        files: (\.pyi?$|(^|/)pyproject\.toml$|(^|/)uv\.lock$)
+        require_serial: true

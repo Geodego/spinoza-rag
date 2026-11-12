@@ -2,7 +2,7 @@
 
 import json
 import math
-from typing import Protocol
+from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
@@ -50,7 +50,9 @@ class OllamaClient:
         self.model, self.url, self.timeout = model, url.rstrip("/"), timeout
         self._opener = build_opener(ProxyHandler({}))
 
-    def _request(self, path: str, body: dict[str, object] | None = None) -> dict:
+    def _request(
+        self, path: str, body: dict[str, object] | None = None
+    ) -> dict[str, Any]:
         data = json.dumps(body).encode() if body is not None else None
         request = Request(
             self.url + path, data=data, headers={"Content-Type": "application/json"}

@@ -16,7 +16,10 @@ Run ``python -m spinoza_rag.config`` to print every default.
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
 
 ExtractionMode = Literal["plain", "layout"]
 
@@ -111,7 +114,7 @@ SEARCH = SearchSettings()
 
 def defaults() -> dict[str, dict[str, object]]:
     """Return all defaults as JSON-compatible values, grouped by area."""
-    groups = {
+    groups: dict[str, DataclassInstance] = {
         "paths": PATHS,
         "extraction": EXTRACTION,
         "chunking": CHUNKING,

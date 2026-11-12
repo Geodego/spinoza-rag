@@ -5,18 +5,58 @@ import hashlib
 import json
 import os
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
+from typing import TypedDict
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from tokenizers import Tokenizer
 
-from spinoza_rag.artifacts import json_bytes, jsonl_bytes, publish_artifacts
+from spinoza_rag.artifacts import (
+    JsonObject,
+    json_bytes,
+    jsonl_bytes,
+    publish_artifacts,
+)
 from spinoza_rag.config import CHUNKING, PATHS, ChunkConfig
 from spinoza_rag.ingest import load_extraction
+
+
+class ChunkFields(TypedDict):
+    """The content and provenance of a chunk, which determine its ID."""
+
+    schema_version: int
+    document_id: str
+    source_file: str
+    page_start: int
+    page_end: int
+    page_chunk_index: int
+    lecture_date: str | None
+    lecture_id: str | None
+    text: str
+    token_count: int
+
+
+class ChunkRow(ChunkFields):
+    """One persisted chunk record in ``chunks.jsonl``."""
+
+    chunk_id: str
+
+
+class ChunkManifest(TypedDict):
+    """The ``manifest.json`` record that ties chunks to their source pages."""
+
+    schema_version: int
+    source: JsonObject
+    pages_sha256: str
+    extraction: JsonObject
+    extraction_dir: str
+    chunking: JsonObject
+    chunk_count: int
+    chunks_sha256: str
 
 
 def normalize_page(text: str, page_number: int) -> str:
@@ -57,7 +97,7 @@ def _lecture_sections(
     return sections, current
 
 
-def _chunk_id(row: dict[str, object], configuration: dict[str, object]) -> str:
+def _chunk_id(row: Mapping[str, object], configuration: Mapping[str, object]) -> str:
     identity = {key: value for key, value in row.items() if key != "chunk_id"}
     return (
         "sha256:"
@@ -67,7 +107,7 @@ def _chunk_id(row: dict[str, object], configuration: dict[str, object]) -> str:
     )
 
 
-def load_chunks(output_dir: Path) -> tuple[list[dict[str, object]], dict[str, object]]:
+def load_chunks(output_dir: Path) -> tuple[list[ChunkRow], ChunkManifest]:
     """Verify persisted chunks and their upstream page artifacts without a PDF."""
     try:
         if output_dir.is_symlink() or {p.name for p in output_dir.iterdir()} != {
@@ -98,7 +138,7 @@ def load_chunks(output_dir: Path) -> tuple[list[dict[str, object]], dict[str, ob
         rows = [json.loads(line) for line in raw.decode("utf-8").splitlines()]
         if not rows or len(rows) != manifest["chunk_count"]:
             raise ValueError("missing or inconsistent chunk records")
-        ids = set()
+        ids: set[str] = set()
         for row in rows:
             if (
                 row["schema_version"] != 1
@@ -122,7 +162,7 @@ def chunk_pages(
     output_dir: Path,
     tokenizer_path: Path,
     config: ChunkConfig | None = None,
-) -> tuple[list[dict[str, object]], dict[str, object]]:
+) -> tuple[list[ChunkRow], ChunkManifest]:
     """Create immutable chunks, or reuse matching verified artifacts.
 
     Only stored page records are read. No PDF parser, embedding model, or vector
@@ -136,7 +176,7 @@ def chunk_pages(
             "Extraction has failed pages; review report.json before chunking."
         )
     tokenizer_data = tokenizer_path.read_bytes()
-    configuration = {
+    configuration: JsonObject = {
         **asdict(config),
         "splitter": "RecursiveCharacterTextSplitter",
         "splitter_version": version("langchain-text-splitters"),
@@ -180,7 +220,7 @@ def chunk_pages(
         ordinal = 0
         for text, section_date in sections:
             for content in splitter.split_text(text):
-                row = {
+                fields: ChunkFields = {
                     "schema_version": 1,
                     "document_id": document.document_id,
                     "source_file": document.source_file,
@@ -194,8 +234,7 @@ def chunk_pages(
                     "text": content,
                     "token_count": token_count(content),
                 }
-                row["chunk_id"] = _chunk_id(row, configuration)
-                rows.append(row)
+                rows.append({**fields, "chunk_id": _chunk_id(fields, configuration)})
                 ordinal += 1
     if not rows:
         raise ValueError("No nonempty text is available for chunking.")

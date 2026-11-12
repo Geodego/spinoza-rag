@@ -18,6 +18,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "commitizen>=4.19.3",
+    "mypy>=2.4.1",
     "prek>=0.5.10",
     "pytest>=9.2.0",
     "ruff>=0.17.4",
@@ -40,6 +41,17 @@ addopts = ["--import-mode=importlib", "-ra"]
 # Strict config, markers, xfail, and parametrize IDs.
 strict = true
 filterwarnings = ["error"]
+
+[tool.mypy]
+files = ["src"]
+strict = true
+# Its stubs leave some functions, such as Tokenizer.from_str, unannotated.
+untyped_calls_exclude = ["tokenizers"]
+
+[[tool.mypy.overrides]]
+# tokenizers ships .pyi stubs but no py.typed marker.
+module = ["tokenizers", "tokenizers.*"]
+follow_untyped_imports = true
 
 [tool.ruff]
 target-version = "py312"

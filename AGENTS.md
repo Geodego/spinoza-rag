@@ -47,6 +47,7 @@ uv sync --locked
 uv run --locked prek install
 uv run --locked ruff check .
 uv run --locked ruff format --check .
+uv run --locked mypy
 uv run --locked pytest
 uv run --locked prek run --all-files
 uv build --no-sources
@@ -103,7 +104,11 @@ uv build --no-sources
 ## Python conventions
 
 - Use Ruff as the single Python linter and formatter; follow pyproject.toml.
-- Use type hints for public function signatures.
+- mypy checks src/ in strict mode, so annotate every function there; tests
+  are not type-checked. Describe persisted records with TypedDicts, and use
+  `JsonObject` only for JSON whose fields are validated at run time.
+- Fix type errors rather than silencing them. A `cast` or `# type: ignore`
+  needs a comment that explains why it is safe.
 
 ## Docstrings and comments
 

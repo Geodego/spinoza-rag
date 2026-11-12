@@ -9,18 +9,32 @@ import time
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Literal, TypedDict, cast
 
 import chromadb
+from chromadb.api.client import Client
 from chromadb.api.models.Collection import Collection
+from chromadb.api.types import PyEmbeddings
 from chromadb.config import Settings
 
-from spinoza_rag.artifacts import json_bytes, save_json
-from spinoza_rag.chunk import load_chunks
+from spinoza_rag.artifacts import JsonObject, json_bytes, save_json
+from spinoza_rag.chunk import ChunkManifest, ChunkRow, load_chunks
 from spinoza_rag.config import EMBEDDING, INDEX, OLLAMA, PATHS
 from spinoza_rag.embeddings import Embedder, OllamaClient
 
 
-def _load_manifest(path: Path) -> dict:
+class IndexManifest(TypedDict):
+    """The resumable ``manifest.json`` checkpoint of an index directory."""
+
+    configuration: JsonObject
+    chunks_dir: str
+    state: Literal["building", "ready"]
+    dimensions: int | None
+    chunk_count: int
+    indexing_seconds: float
+
+
+def _load_manifest(path: Path) -> IndexManifest:
     try:
         if path.is_symlink():
             raise ValueError("manifest must not be a symlink")
@@ -42,16 +56,22 @@ def _load_manifest(path: Path) -> dict:
             raise ValueError("invalid embedding dimensions")
         if value["state"] == "ready" and dimensions is None:
             raise ValueError("ready index has no embedding dimensions")
-        return value
+        # The checks above validate every IndexManifest field.
+        return cast(IndexManifest, value)
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError(f"Invalid index manifest in {path.parent}: {error}") from error
 
 
 def _stored_dimensions(collection: Collection) -> int:
-    return len(collection.get(limit=1, include=["embeddings"])["embeddings"][0])
+    embeddings = collection.get(limit=1, include=["embeddings"])["embeddings"]
+    if embeddings is None:
+        raise ValueError("Chroma returned no embeddings.")
+    return len(embeddings[0])
 
 
-def _configuration(manifest: dict, identity: dict, collection_name: str) -> dict:
+def _configuration(
+    manifest: ChunkManifest, identity: dict[str, str], collection_name: str
+) -> JsonObject:
     return {
         "schema_version": 1,
         "chunks_manifest_sha256": hashlib.sha256(json_bytes(manifest)).hexdigest(),
@@ -62,35 +82,45 @@ def _configuration(manifest: dict, identity: dict, collection_name: str) -> dict
     }
 
 
-def _metadata(row: dict, source: dict) -> dict:
-    metadata = {
-        key: row[key]
-        for key in (
-            "document_id",
-            "source_file",
-            "page_start",
-            "page_end",
-            "page_chunk_index",
-            "token_count",
-            "lecture_date",
-            "lecture_id",
-        )
-        if row[key] is not None
+def _metadata(row: ChunkRow, source: JsonObject) -> dict[str, str | int]:
+    metadata: dict[str, str | int] = {
+        "document_id": row["document_id"],
+        "source_file": row["source_file"],
+        "page_start": row["page_start"],
+        "page_end": row["page_end"],
+        "page_chunk_index": row["page_chunk_index"],
+        "token_count": row["token_count"],
     }
+    # Undated chunks omit lecture fields rather than storing None, so metadata
+    # still matches the records that existing indexes verify against.
+    if row["lecture_date"] is not None:
+        metadata["lecture_date"] = row["lecture_date"]
+    if row["lecture_id"] is not None:
+        metadata["lecture_id"] = row["lecture_id"]
     for key in ("Title", "Author"):
         if source["metadata"].get(key):
             metadata[key.lower()] = source["metadata"][key]
     return metadata
 
 
-def _client(path: Path):
-    return chromadb.PersistentClient(
+def _client(path: Path) -> Client:
+    client = chromadb.PersistentClient(
         path=str(path), settings=Settings(anonymized_telemetry=False)
     )
+    # PersistentClient is declared as ClientAPI, which lacks close(); callers
+    # need close() to release SQLite locks, so require the concrete client.
+    if not isinstance(client, Client):
+        raise TypeError(f"Unsupported Chroma client: {type(client).__name__}")
+    return client
 
 
 def _verify_collection(
-    collection, rows: list[dict], source: dict, fingerprint: str, *, complete: bool
+    collection: Collection,
+    rows: list[ChunkRow],
+    source: JsonObject,
+    fingerprint: str,
+    *,
+    complete: bool,
 ) -> set[str]:
     if (
         collection.metadata != {"pipeline_fingerprint": fingerprint}
@@ -102,8 +132,11 @@ def _verify_collection(
         )
     expected = {row["chunk_id"]: row for row in rows}
     saved = collection.get(include=["documents", "metadatas"])
+    documents, metadatas = saved["documents"], saved["metadatas"]
+    if documents is None or metadatas is None:
+        raise ValueError("Chroma returned no documents or metadata.")
     for identifier, text, metadata in zip(
-        saved["ids"], saved["documents"], saved["metadatas"], strict=True
+        saved["ids"], documents, metadatas, strict=True
     ):
         if (
             identifier not in expected
@@ -130,7 +163,7 @@ def index_chunks(
     collection_name: str = INDEX.collection,
     batch_size: int = INDEX.batch_size,
     progress: Callable[[str], None] | None = None,
-) -> dict:
+) -> dict[str, object]:
     """Index missing chunk IDs, checkpoint each batch, and never re-embed saved IDs.
 
     A pipeline fingerprint prevents mixing sources, tokenizers, settings, or
@@ -145,6 +178,7 @@ def index_chunks(
     manifest_path = index_dir / "manifest.json"
     if index_dir.is_symlink():
         raise ValueError("Index directory must not be a symlink.")
+    manifest: IndexManifest
     if manifest_path.exists():
         manifest = _load_manifest(manifest_path)
         if manifest.get("configuration") != configuration:
@@ -209,11 +243,13 @@ def index_chunks(
                     "index remains resumable."
                 )
             manifest["dimensions"] = dimensions
+            # Lists are invariant, so copy into the element type Chroma declares.
+            embeddings: PyEmbeddings = list(vectors)
             collection.upsert(
                 ids=[row["chunk_id"] for row in batch],
                 documents=[row["text"] for row in batch],
                 metadatas=[_metadata(row, chunks_manifest["source"]) for row in batch],
-                embeddings=vectors,
+                embeddings=embeddings,
             )
             manifest["indexing_seconds"] += time.perf_counter() - started
             save_json(manifest_path, manifest)
@@ -243,7 +279,7 @@ def index_chunks(
 @contextmanager
 def open_index(
     index_dir: Path, embedder: Embedder
-) -> Iterator[tuple[Collection, dict]]:
+) -> Iterator[tuple[Collection, IndexManifest]]:
     """Open a complete, compatible existing index without embedding documents."""
     manifest_path = index_dir / "manifest.json"
     if (

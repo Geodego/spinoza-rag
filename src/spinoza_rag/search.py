@@ -4,12 +4,23 @@ import argparse
 import math
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict
 
 import chromadb
+from chromadb.api.types import Metadata, PyEmbeddings
 
 from spinoza_rag.config import EMBEDDING, OLLAMA, PATHS, SEARCH
 from spinoza_rag.embeddings import Embedder, OllamaClient
 from spinoza_rag.index import open_index
+
+
+class SearchResult(TypedDict):
+    """A retrieved passage with its PDF provenance and cosine distance."""
+
+    chunk_id: str
+    text: str
+    metadata: Metadata
+    distance: float
 
 
 def search(
@@ -18,7 +29,7 @@ def search(
     embedder: Embedder,
     *,
     top_k: int = SEARCH.top_k,
-) -> list[dict]:
+) -> list[SearchResult]:
     """Embed only the question and return nearest passages with source metadata."""
     if not question.strip() or top_k <= 0:
         raise ValueError("Question must not be empty and top_k must be positive.")
@@ -35,11 +46,18 @@ def search(
             raise ValueError(
                 "Query embedding dimensions/values do not match the index."
             )
+        # Lists are invariant, so copy into the element type Chroma declares.
+        query: PyEmbeddings = list(vectors)
         result = collection.query(
-            query_embeddings=vectors,
+            query_embeddings=query,
             n_results=min(top_k, collection.count()),
             include=["documents", "metadatas", "distances"],
         )
+        documents = result["documents"]
+        metadatas = result["metadatas"]
+        distances = result["distances"]
+        if documents is None or metadatas is None or distances is None:
+            raise ValueError("Chroma returned no documents, metadata, or distances.")
         return [
             {
                 "chunk_id": identifier,
@@ -49,9 +67,9 @@ def search(
             }
             for identifier, text, metadata, distance in zip(
                 result["ids"][0],
-                result["documents"][0],
-                result["metadatas"][0],
-                result["distances"][0],
+                documents[0],
+                metadatas[0],
+                distances[0],
                 strict=True,
             )
         ]

@@ -54,6 +54,7 @@ Run the same checks before submitting changes:
 ```sh
 uv run --locked ruff check .
 uv run --locked ruff format --check .
+uv run --locked mypy
 uv run --locked pytest
 uv run --locked prek run --all-files
 uv build --no-sources

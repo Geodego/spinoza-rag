@@ -2,8 +2,12 @@
 
 import json
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
+from typing import Any
+
+# A decoded JSON object whose fields the loading stage validates at run time.
+type JsonObject = dict[str, Any]
 
 
 def json_bytes(value: object) -> bytes:
@@ -13,7 +17,7 @@ def json_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
-def jsonl_bytes(records: Iterable[dict[str, object]]) -> bytes:
+def jsonl_bytes(records: Iterable[Mapping[str, object]]) -> bytes:
     """Encode one deterministic UTF-8 JSON object per line."""
     return "".join(
         json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in records

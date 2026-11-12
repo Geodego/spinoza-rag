@@ -9,7 +9,7 @@ import hashlib
 import json
 import logging
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -18,7 +18,7 @@ import pypdf
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
-from spinoza_rag.artifacts import publish_artifacts
+from spinoza_rag.artifacts import JsonObject, publish_artifacts
 from spinoza_rag.config import EXTRACTION, PATHS, ExtractionMode
 
 # Bump when the output format or extraction behavior changes.
@@ -139,7 +139,7 @@ def extract_pdf(
                 raise ValueError("The PDF contains no pages.")
             metadata: dict[str, str] = {}
             try:
-                info = reader.metadata or {}
+                info: Mapping[str, object] = reader.metadata or {}
                 metadata = {
                     name: str(info[f"/{name}"])
                     for name in _METADATA_FIELDS
@@ -213,7 +213,7 @@ def _extraction_settings(
     }
 
 
-def _serialize(document: ExtractedDocument) -> tuple[bytes, dict[str, object]]:
+def _serialize(document: ExtractedDocument) -> tuple[bytes, JsonObject]:
     rows = [
         {
             "schema_version": _SCHEMA_VERSION,
@@ -228,7 +228,7 @@ def _serialize(document: ExtractedDocument) -> tuple[bytes, dict[str, object]]:
     pages_jsonl = "".join(
         json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows
     ).encode("utf-8")
-    report: dict[str, object] = {
+    report: JsonObject = {
         "schema_version": _SCHEMA_VERSION,
         "document": {
             "document_id": document.document_id,
@@ -255,7 +255,7 @@ def _serialize(document: ExtractedDocument) -> tuple[bytes, dict[str, object]]:
     return pages_jsonl, report
 
 
-def load_extraction(output_dir: Path) -> tuple[ExtractedDocument, dict[str, object]]:
+def load_extraction(output_dir: Path) -> tuple[ExtractedDocument, JsonObject]:
     """Read verified page artifacts without opening or re-extracting the PDF.
 
     The recorded extractor version may differ from the installed one. Integrity,
@@ -341,7 +341,7 @@ def _load_existing_extraction(
     output_dir: Path,
     min_page_characters: int,
     extraction_mode: ExtractionMode,
-) -> dict[str, object] | None:
+) -> JsonObject | None:
     if output_dir.is_symlink():
         raise ValueError("The output directory must not be a symlink.")
     if not output_dir.exists():
@@ -367,9 +367,7 @@ def _load_existing_extraction(
         ) from error
 
 
-def write_extraction(
-    document: ExtractedDocument, output_dir: Path
-) -> dict[str, object]:
+def write_extraction(document: ExtractedDocument, output_dir: Path) -> JsonObject:
     """Publish pages.jsonl and report.json together, or reuse identical output.
 
     A sibling temporary directory is renamed into place only after both files

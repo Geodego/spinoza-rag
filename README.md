@@ -169,8 +169,8 @@ LangGraph orchestration, agents, and a web interface are out of scope for now.
 ## Technology
 
 Python 3.12 · uv · pypdf · LangChain text splitters with the Qwen3 tokenizer ·
-Ollama (`qwen3-embedding:0.6b`) · Chroma (embedded, cosine) · Ruff · pytest ·
-GitHub Actions
+Ollama (`qwen3-embedding:0.6b`) · Chroma (embedded, cosine) · Ruff · mypy ·
+pytest · GitHub Actions
 
 Runtime dependencies are limited to pypdf, LangChain text splitters,
 tokenizers, and Chroma. Chroma's default embedding function and telemetry are
@@ -183,6 +183,7 @@ uv sync --locked
 uv run --locked prek install
 uv run --locked ruff check .
 uv run --locked ruff format --check .
+uv run --locked mypy
 uv run --locked pytest
 ```
 
