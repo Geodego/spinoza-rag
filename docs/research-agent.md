@@ -74,8 +74,10 @@ the fixed methodological caution `Une similarité vectorielle ne prouve rien.`.
 Other text following a refusal still requires citations. The prompt quotes the
 refusal separately; see [the regression diagnosis](knowledge/agent-refusal-boundary.md).
 A failure produces an actionable error and a nonzero CLI status. Tool retrieval
-failures are visible and consume a slot; the model can try once more or
-acknowledge insufficient proof. A no-evidence run returns a fixed French insufficient-evidence message.
+failures are visible and consume a slot; a later search can still admit evidence.
+If any search fails and no evidence is admitted, the run fails with a nonzero
+status. The fixed French no-evidence response is reserved for runs without
+retrieval errors, including skipped retrieval or an exhausted evidence budget.
 
 A valid label proves only that a source exists in the registry. It does **not**
 prove entailment, relevance, completeness or factual grounding. Human inspection

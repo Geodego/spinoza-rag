@@ -170,7 +170,8 @@ def research(
     Citation checks validate label resolution only, never factual grounding.
 
     Raises:
-        ResearchError: Execution fails, exceeds model limits, or yields invalid
+        ResearchError: Retrieval fails without admitted evidence, execution
+            exceeds model limits, or the model yields invalid
             citations, a truncated answer, or an uncited substantive answer.
         ValueError: The question or evidence budget is invalid.
     """
@@ -243,6 +244,10 @@ def research(
             unknown = session.evidence.unknown_citations(answer)
             if unknown:
                 session.emit({"event": "unknown_citations", "labels": unknown})
+            if not session.evidence.sources and any(
+                event["event"] == "search_error" for event in session.events
+            ):
+                raise ResearchError("Retrieval failed; no evidence admitted.")
             if not session.evidence.sources:
                 session.emit({"event": "answer_withheld", "reason": "no evidence"})
                 answer = "Les preuves recueillies sont insuffisantes pour répondre."

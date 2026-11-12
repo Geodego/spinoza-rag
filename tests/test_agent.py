@@ -282,3 +282,31 @@ def test_refusal_prefix_cannot_hide_uncited_claims(retrieve):
     )
     with pytest.raises(ResearchError, match="no source citations"):
         research("Question", retrieve, model=model)
+
+
+def test_answer_retrieval_failure_without_evidence_raises():
+    def unavailable(query):
+        raise ValueError("Index is stale.")
+
+    model = ToolModel(responses=[tool_message("a", "b"), AIMessage(content="Réponse.")])
+    with pytest.raises(ResearchError, match="Retrieval failed"):
+        research("Question", unavailable, model=model)
+
+
+def test_partial_retrieval_failure_keeps_admitted_evidence(retrieve):
+    def intermittent(query):
+        if query == "unavailable":
+            raise ValueError("Embedding temporarily unavailable.")
+        return retrieve(query)
+
+    model = ToolModel(
+        responses=[
+            tool_message("unavailable"),
+            tool_message("available"),
+            AIMessage(content="Synthetic evidence [S1]."),
+        ]
+    )
+    result = research("Question", intermittent, model=model)
+    assert result["answer"] == "Synthetic evidence [S1]."
+    assert result["sources"][0]["chunk_id"] == "available"
+    assert [e["event"] for e in result["events"]].count("search_error") == 1
