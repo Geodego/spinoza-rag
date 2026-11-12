@@ -39,8 +39,8 @@ ignored by Git, as are legacy `chroma/`, PDF files, and GGUF weights.
 
 The chat adapter uses the installed `qwen3:8b` through `langchain-ollama`,
 with `reasoning=False`, temperature 0, a 16,384-token model window, and at most
-700 generated tokens per call. It validates loopback URLs and bypasses proxy
-environment variables, independently of the unchanged embedding client.
+700 generated tokens per call. Like the embedding client, it validates loopback
+URLs and bypasses proxy environment variables.
 LangChain supplies agent orchestration backed by LangGraph.
 
 Agent defaults allow two searches and three model calls per fresh run. The

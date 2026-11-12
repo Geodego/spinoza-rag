@@ -1,4 +1,4 @@
-"""Run a fresh, bounded local research agent over the existing retrieval path."""
+"""Run a fresh, bounded local research agent over the saved-index search path."""
 
 import json
 import re

@@ -1,13 +1,13 @@
 # Retrieval evaluation
 
-This milestone measures whether **Qwen embeddings, Chroma search, and the current
+The evaluation measures whether **Qwen embeddings, Chroma search, and the current
 PDF extraction/chunking** retrieve the passages needed for French philosophical
-questions. Its purpose is to establish retrieval evidence before choosing
-retrieval improvements or introducing answer generation.
+questions. It scores retrieval on its own, so that retrieval changes are judged
+on page evidence rather than on the fluency of generated answers.
 
 ## Current status and next steps
 
-| Deliverable | Status |
+| Component | Status |
 | --- | --- |
 | Evaluation CLI and synthetic metric tests | Implemented |
 | [Partial gold set](../evaluation/gold.v1.json) | Version `1.4.0-partial`: 10 human-validated questions, 15 unchanged proposed questions |
@@ -16,8 +16,9 @@ retrieval improvements or introducing answer generation.
 
 The first partial baseline uses the existing exact-page scorer and a frozen,
 human-approved subset; see [results and decision](#first-official-partial-baseline).
-Equivalent-page groups and graded scoring remain deferred. No retrieval
-optimization or answer generation is included in this measurement.
+Equivalent-page groups and graded scoring remain deferred. The measurement
+covers retrieval only; answer generation is reviewed separately in the
+[answer review log](answer-review.md).
 
 ## Annotation format and provenance
 
@@ -184,24 +185,25 @@ amounts of text at a fixed budget. The small, correlated, deliberately selected
 question set is a pilot, not a statistical guarantee; reserve independently
 annotated held-out questions if tuning follows. There is no agreed numeric
 acceptance threshold. Review coverage, alternate valid pages, duplicate evidence
-and fragmented arguments before choosing retrieval optimization or generation.
+and fragmented arguments before choosing a retrieval change.
 
 ## First official partial baseline
 
 Measured on 2026-11-12 at 11:19:11 Europe/Paris (10:19:11 UTC), on
 macOS 26.6.2 Intel (`x86_64`), Python 3.12.13.
-The existing evaluation CLI used the existing saved index and local Ollama
-HTTP embedding integration. No retrieval or generation code was changed.
+The evaluation CLI ran against the saved index with the local Ollama HTTP
+embedding client.
 
 GG explicitly approved q01, q02, q03, q05, q08, q09, q11, q13, q17 and q26
 on 2026-11-12, without changing their reference lists. Their 45 reference
 entries are validated in gold version `1.4.0-partial`; all other 15 questions
-remain proposed and unchanged. The submitted version field was blank, so this
-version was assigned during transfer. Original AI notes were retained as
-historical context; secondary candidates were not promoted to references.
+remain proposed and unchanged. The review form left the version field blank;
+the version was assigned when the approvals were imported into the gold file.
+Original AI notes were retained as historical context; secondary candidates
+were not promoted to references.
 
 Labels and membership were frozen before retrieval. The human decisions,
-transfer receipt and pre-review gold are retained in ignored
+import record and pre-review gold are retained in ignored
 `storage/reviews/retrieval-pilot-2026-11-12/`. The run is in ignored
 `storage/evaluations/baseline-partial-v1/report.json`.
 
@@ -268,24 +270,24 @@ statistical sample. No numeric acceptance threshold was agreed.
 
 ### Decision and deferred follow-up
 
-The initial baseline review recommended a focused retrieval experiment for
-incomplete conatus evidence before grounded generation. The q08 evidence is
-already useful at rank 1; its lower page coverage alone does not justify a
-broad retrieval overhaul or reranking.
+The baseline review recommended a focused retrieval experiment for incomplete
+conatus evidence before grounded generation. The q08 evidence is already useful
+at rank 1; its lower page coverage alone does not justify a broad retrieval
+overhaul or reranking.
 
-On 2026-11-12, the project owner chose to postpone the adjacent-page experiment.
-Its hypothesis, scope and comparison criteria are recorded in
-[later improvements](future-improvements.md#adjacent-page-context). It is no
-longer an immediate prerequisite for scoping the next milestone. The measured
-coverage limitations remain, and this deferral does not establish complete
-answer support or authorize generation work. The gold set, baseline report and
-retrieval implementation remain unchanged by this decision.
+On 2026-11-12 the adjacent-page experiment was postponed and ceased to be a
+prerequisite for answer generation. Its hypothesis, scope and comparison criteria are recorded in
+[later improvements](future-improvements.md#adjacent-page-context). The measured
+coverage limitations remain, and the deferral does not establish complete
+answer support. The gold set, baseline report and retrieval implementation were
+not changed by this decision.
 
-When generation is authorized, retain the existing Ollama HTTP integration,
-explicitly disable Qwen3 thinking, preserve citation provenance through
-short source labels, measure Ollama prompt-processing and generation times
-separately, and store corpus-derived examples outside Git. Answer generation,
-new frameworks, reranking and retrieval enhancements remain unimplemented.
+Answer generation was then built as the [research agent](research-agent.md) on
+the same retrieval path, under constraints set here: keep the Ollama HTTP
+integration, explicitly disable Qwen3 thinking, preserve citation provenance
+through short source labels, measure Ollama prompt-processing and generation
+times separately, and store corpus-derived examples outside Git. Reranking and
+retrieval enhancements remain unimplemented.
 
 ### Frozen configuration fingerprints
 
@@ -306,7 +308,7 @@ new frameworks, reranking and retrieval enhancements remain unimplemented.
 | Extraction | `pypdf 7.0.1; layout; line_endings_only` |
 | Runtime packages | `spinoza-rag 0.1.0; Chroma 1.5.9; tokenizers 0.22.2; splitter 1.1.3` |
 
-Query instruction (unchanged):
+Query instruction:
 
 `Given a question about Deleuze's lectures on Spinoza, retrieve relevant lecture passages that answer the question.`
 

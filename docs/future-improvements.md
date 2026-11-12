@@ -6,10 +6,10 @@ limitations remain in [retrieval evaluation](evaluation.md).
 
 ## Adjacent-page context
 
-**Status: deferred by project decision on 2026-11-12.** Revisit when retrieval
-coverage becomes the focus again. This experiment is no longer an immediate
-prerequisite for scoping the next milestone; deferral does not resolve the
-known evidence gaps or authorize answer-generation implementation.
+**Status: deferred on 2026-11-12.** Revisit when retrieval coverage becomes
+the focus again. Deferral does not resolve the known evidence gaps: the
+[answer review log](answer-review.md) records answers whose cited passage ends
+before the support the answer claims.
 
 ### Motivation and hypothesis
 

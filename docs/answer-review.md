@@ -1,11 +1,15 @@
-# Local demonstration and source review
+# Answer review log
 
-## Reproduce the checks
+Research-agent runs on the local corpus, with the source review of each answer.
+These are individual runs, not an answer-quality benchmark; the retrieval
+benchmark is in [retrieval evaluation](evaluation.md).
 
-Run these commands from the repository root. They require the existing validated
-index and both installed Ollama models. They do not ingest, rebuild or change the
+## Commands
+
+Run these commands from the repository root. They require a built index and
+both installed Ollama models. They do not ingest, rebuild or change the
 retrieval baseline. Keep the logs local; they contain corpus passages and model
-output. The commands below match the demonstrations run on 2026-11-12.
+output. The runs below were recorded on 2026-11-12.
 
 ```sh
 mkdir -p storage/research
@@ -27,20 +31,6 @@ uv run --locked python -m spinoza_rag.research answer \
 uv run --locked python -m spinoza_rag.research answer \
   'Quels numéros de version du noyau Linux sont cités dans le cours du 3 février 1981 ? Recherche les passages de ce cours avant de répondre.' \
   --top-k 1 --timeout 600 > storage/research/insufficient-after-search.log 2>&1
-```
-
-Other smoke checks run:
-
-```sh
-uv run --locked python -m spinoza_rag.search 'joie' --top-k 1 \
-  > storage/research/legacy-search.log 2>&1
-uv run --locked python -m spinoza_rag.research --help
-uv run --locked python -m spinoza_rag.evaluate --help
-```
-
-The focused definition and corrected missing-detail commands are:
-
-```sh
 uv run --locked python -m spinoza_rag.research answer \
   'Selon les passages, quels éléments composent le premier genre de connaissance ? Limite la réponse à cette définition.' \
   --top-k 1 --timeout 600 > storage/research/definition.log 2>&1
@@ -49,8 +39,8 @@ uv run --locked python -m spinoza_rag.research answer \
   --top-k 1 --timeout 600 > storage/research/insufficient-edition-page-fixed.log 2>&1
 ```
 
-The initial missing-detail run used the same question and flags before the fix,
-with output in `storage/research/insufficient-edition-page.log`; it exited 1.
+The last question was first run before the refusal fix described below, with
+output in `storage/research/insufficient-edition-page.log`; it exited 1.
 
 ## Environment and interpretation
 
@@ -87,13 +77,13 @@ sources on PDF pages 69 and 314. It used 3,443 evidence bytes and completed in
 generation. Both labels resolved. The passages supported topic definitions and
 some related concepts, but the answer's proposed conatus-as-driving-force
 connection exceeded those sources. Two searches did not establish full support.
-This run demonstrated multiple searches in one round; a sequential follow-up
-round is covered by the scripted graph tests, not established by this run.
+This run issued both searches in one round; a sequential follow-up round is
+covered by the scripted graph tests, not by this run.
 
 The vaccine question completed in 6.61 seconds. The model skipped retrieval;
 the application withheld its draft and returned the fixed no-evidence response.
-This demonstrates the no-evidence guard, not semantic assessment of retrieved
-passages or proof that the corpus lacks an answer.
+This exercises the no-evidence guard, not semantic assessment of retrieved
+passages, and does not prove that the corpus lacks an answer.
 
 The two-passage answer used 3,692 evidence bytes and completed in 82.62 seconds,
 with 38.80 seconds of prompt processing and 42.98 seconds of generation. Its
@@ -107,17 +97,18 @@ The Linux question also skipped retrieval despite the explicit request to
 search. The no-evidence guard returned its fixed response in 6.76 seconds. The
 filename `insufficient-after-search.log` records the intended scenario; its
 actual trace contains zero searches. This is a model instruction-compliance
-limitation, not a successful demonstration of irrelevance detection.
+limitation, not evidence of irrelevance detection.
 
 A corpus-specific missing-detail question did trigger a search: it asked for
 the page number in the original Ethics edition used for the discussion of the
 three kinds of knowledge. The retrieved passage was on PDF page 2, without that
 edition-specific number. The model produced the requested refusal plus a fixed
-methodological caution. The original validator rejected it. A local replay and
-synthetic regression reproduced the mismatch; commit `dda9968` fixed the
-prompt boundary and narrowly accepted that harmless variant. Earlier runs in
-this page precede that refusal fix; their timings and wording are historical
-observations, not promised output from the final prompt.
+methodological caution, which the original validator rejected. A local replay
+and a synthetic regression test reproduced the mismatch; commit `dda9968` fixed
+the prompt boundary and narrowly accepted that harmless variant (see
+[the knowledge entry](knowledge/agent-refusal-boundary.md)). This run and those
+described above precede that fix; their timings and wording are historical
+observations, not promised output from the current prompt.
 
 The focused first-kind definition made one search, admitted `[S1]` from PDF
 page 314 (lecture 1981-02-03), used 1,792 evidence bytes and completed in
@@ -128,31 +119,20 @@ cross-topic synthesis seen in the broader questions.
 
 The corrected missing-detail run made one search, admitted one passage on PDF
 page 489 (lecture 1981-03-17), then returned the exact insufficient-evidence
-refusal successfully. Source review confirmed that the admitted passage did
-not supply the requested edition-page number. It used 1,604 evidence bytes and
-completed in 37.32 seconds, with 22.80 seconds of prompt processing and
-13.32 seconds of generation. The rephrased model query retrieved a different
-passage than the pre-fix run; this is a successful behavioral check, not a
-controlled retrieval-quality comparison.
-
-## Validation run
-
-The final implementation passed Ruff lint and format checks, strict mypy,
-209 synthetic tests, all prek hooks, locked dependency sync, and the source
-and wheel build. A non-editable installation also passed 26 targeted
-agent/CLI/installed-import tests before the refusal fix; the subsequent full
-209-test run included that regression and the installed-import smoke test.
-The CLI help and unchanged legacy search/evaluation entry points were checked.
-Every admitted passage in the successful logs was compared byte-for-byte with
-its persisted chunk, including PDF page and available lecture provenance.
-These checks were local; Linux CI was not run in this session.
+refusal. Source review confirmed that the admitted passage did not supply the
+requested edition-page number. It used 1,604 evidence bytes and completed in
+37.32 seconds, with 22.80 seconds of prompt processing and 13.32 seconds of
+generation. The rephrased model query retrieved a different passage than the
+pre-fix run; this is a behavioral check, not a controlled retrieval-quality
+comparison.
 
 ## Review procedure
 
 For every successful answer, inspect the actual admitted passage text and the
 label-to-chunk mapping in the local log. Check each material claim against its
 cited passage, including whether the excerpt ends before the needed support.
-Compare source text and page/lecture metadata with persisted chunk artifacts.
+Compare source text and page/lecture metadata byte for byte with the persisted
+chunk artifacts; every admitted passage in the runs above matched its chunk.
 Do not substitute the presence of a label or a small cosine distance for that
 review. Do not copy passages or generated answers into tracked documentation.
 Local review notes are kept in `storage/research/source-review.json`.
@@ -161,10 +141,9 @@ The review above establishes observations for these runs only. There is no
 answer-quality gold set or calibrated irrelevance threshold. A strict uncited
 refusal format can reject otherwise reasonable paraphrases; errors are surfaced
 instead of silently labelling those drafts grounded. Adjacent-page expansion,
-reranking and retrieval/evaluation changes remain deferred. The frozen gold set
-and official retrieval baseline were not modified or rerun for these demos.
+reranking and retrieval/evaluation changes remain deferred. The gold set and
+retrieval baseline were not modified or rerun for these runs.
 
 See [the design tradeoffs](research-agent.md#design-tradeoffs) for the
-architectural constraints behind these results. Local evidence and timing events
-support inspection of individual runs; unsupported synthesis remains an observed
-limitation of answer generation.
+architectural constraints behind these results. Unsupported synthesis remains
+the main observed limitation of answer generation.

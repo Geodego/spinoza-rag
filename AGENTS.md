@@ -38,8 +38,8 @@ code, configuration, tests, and uv.lock remain authoritative.
 ## Setup and checks
 
 Use Python 3.12, uv, and current Git (at least 2.28). See docs/development.md if
-an older Git on PATH breaks prek. On the audited Mac, use `/usr/bin/git` rather
-than the old `/usr/local/bin/git` (see
+an older Git on PATH breaks prek. On the macOS Intel development machine, use
+`/usr/bin/git` rather than the old `/usr/local/bin/git` (see
 `docs/knowledge/git-prek-no-relative.md`). Run from the repository root:
 
 ```sh
@@ -59,11 +59,12 @@ uv build --no-sources
 - Put application code in src/spinoza_rag/ and tests in tests/ (see Testing).
 - Indexing and search must read persisted page/chunk artifacts, never the PDF.
   Preserve configuration fingerprints and reject stale or incompatible indexes.
-- Define tunable defaults (paths, models, stage and future agent settings) in
+- Define tunable defaults (paths, models, stage and agent settings) in
   src/spinoza_rag/config.py; CLIs and function defaults reference it, not
   literals. Keep schema/normalization revisions in their modules. Do not rename
   or reformat settings that are serialized into manifests or fingerprints.
-- Keep search retrieval-only until answer generation is explicitly requested.
+- Keep the search CLI retrieval-only; answer generation belongs to the research
+  agent (agent.py and research.py).
 - Fix lint, format, and test failures before reporting completion or committing.
   Report checks actually executed and any unverified results.
 - Never bypass Git hooks or quality checks without explicit authorization.

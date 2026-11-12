@@ -12,7 +12,7 @@ current Git (at least 2.28). The verified toolchain is uv 0.12.1 and Python
 `requires-python` limits support to 3.12.
 
 An old Git on PATH breaks prek's staged-file checks
-(`invalid option: --no-relative`). On the audited macOS Intel machine,
+(`invalid option: --no-relative`). On the macOS Intel development machine,
 `/usr/local/bin/git` is Git 2.23 while Apple's `/usr/bin/git` 2.50.1 works.
 Select it for the shell session before setup, and set PyCharm's **Version
 Control → Git → Path to Git executable** to `/usr/bin/git`:

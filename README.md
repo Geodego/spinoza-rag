@@ -144,8 +144,8 @@ per-question failures and frozen configuration are documented in the
 [retrieval evaluation](docs/evaluation.md#first-official-partial-baseline).
 Finding one relevant page does not establish complete answer support.
 The targeted retrieval follow-up is [deferred](docs/future-improvements.md).
-Local answer demos and source-review limitations are recorded in
-[the demonstration notes](docs/demonstration.md).
+Reviewed answer runs, with timings and unsupported claims, are recorded in the
+[answer review log](docs/answer-review.md).
 
 ### Limitations
 
@@ -170,14 +170,12 @@ compatibility checks, errors, and the guarantee that search never re-embeds
 documents.
 
 The evaluation framework, human validation of the pilot subset, and first
-official partial baseline are complete. Equivalent-page and graded-scoring
-changes remain deferred. See
+official partial baseline are complete. See
 [current status and next steps](docs/evaluation.md#current-status-and-next-steps).
 
-The adjacent-page retrieval experiment is deferred. Its scope and criteria
-for resuming are recorded in [later improvements](docs/future-improvements.md),
-alongside deferred evaluation design. The next milestone can be scoped
-separately; no retrieval enhancements have been added.
+Adjacent-page context, reranking, and equivalent-page or graded scoring are
+deferred. Their hypotheses and criteria for resuming are recorded in
+[later improvements](docs/future-improvements.md).
 
 Use the [local research CLI](docs/research-agent.md) for context-only retrieval
 or agent answers. A web interface, multi-agent system and persistent memory

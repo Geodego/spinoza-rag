@@ -15,11 +15,11 @@ uv run --locked python -m spinoza_rag.research answer \
 `context` retrieves passages and provenance without constructing a chat model.
 It still uses Ollama **embeddings**. `answer` asks the local model to choose
 queries, optionally gather follow-up evidence, and answer in French with `[S1]`
-citations. The original `spinoza_rag.search` CLI remains retrieval-only and
-unchanged. `--help` lists index, model, retrieval, timeout and evidence limits.
-The timeout applies to each request, not to the whole run.
+citations. The `spinoza_rag.search` CLI stays retrieval-only. `--help` lists
+index, model, retrieval, timeout and evidence limits. The timeout applies to
+each request, not to the whole run.
 
-Exact commands and reviewed outcomes: [local demonstration](demonstration.md).
+Recorded runs and their source review: [answer review log](answer-review.md).
 
 ## Architecture and bounds
 
@@ -37,11 +37,11 @@ flowchart LR
     Evidence -->|context mode| Output
 ```
 
-`ResearchSession` wraps exactly the existing `search` function through an
-injected retriever. It preserves embedding identity, manifest checks, upstream
-checksums and the official ranking path. Each search reopens and verifies the
-index. There is no adjacent-page expansion, reranking, new index, or modification
-to the frozen gold set or official baseline.
+`ResearchSession` calls the search CLI's `search` function through an injected
+retriever. That function shares `search_collection` with the evaluation, so
+embedding identity, manifest checks, upstream checksums and ranking match the
+evaluated path. Each search reopens and verifies the index. Passages are used
+as retrieved, without adjacent-page expansion or reranking.
 
 Each invocation creates a fresh graph without a checkpointer or store. There is
 one tool, a lock-protected two-search limit (including failed attempts), three
@@ -57,7 +57,7 @@ duplicate passages are not resent. A later search can receive no new evidence
 because its results duplicate earlier ones or the budget is full. The budget
 bounds serialized evidence, not the exact tokenizer count of the whole prompt;
 Ollama's model context window and per-call output cap are separate controls.
-`--top-k 1` is useful for leaving room for a second topic in a demonstration.
+`--top-k 1` leaves room in the budget for a second search on another topic.
 
 ## Grounding and failures
 
@@ -102,7 +102,7 @@ or hosted service is configured. Tests verify this override at the model boundar
 LangSmith and the LangGraph SDK are transitive dependencies, not services used
 by the application. No custom tracing callbacks are accepted.
 
-Redirect demonstrations to ignored `storage/research/`. Keep corpus passages,
+Redirect runs you want to keep to ignored `storage/research/`. Keep corpus passages,
 generated answers, and execution traces there. Nothing is saved by default;
 terminal scrollback and shell redirection remain the user's local responsibility.
 Tracked documentation contains questions and metadata, never corpus quotations.
