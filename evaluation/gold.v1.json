@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "version": "1.3.0-proposed",
+  "version": "1.4.0-partial",
   "document_id": "sha256:66ddeacf8dc52cc7dde8156cd1fdd7766dc0c2587854f94a3b78442117966862",
   "pages_sha256": "77fbfefc622eef5b3e7ce2790bc40c53a3d6ad0460e7f3ef841c53338b0ef023",
   "discovery": {
     "method": "two_pass_ai_keyword_and_direct_page_inspection",
     "date": "2026-11-12",
-    "annotation": "Annotation IA en deux passes sur les pages extraites persistées : recherche lexicale et lecture directe initiales, puis annotation aveugle indépendante par deux annotateurs IA en contextes neufs disposant uniquement des questions et des pages. Parcours des 531 pages avec variantes lexicales, lecture des candidates et de leur voisinage, distinction entre noyau et appuis secondaires, puis adjudication avec relecture des ajouts au noyau. Aucun résultat vectoriel utilisé pour sélectionner les références. Les lectures de la seconde passe ne sont pas indépendamment reproduites; prompts exacts, identités des modèles et sorties individuelles non conservés. Aucune validation humaine. Les références numériques contiennent uniquement le noyau fusionné, avec la première page des groupes équivalents. Les alternatives et les appuis secondaires de confiance moindre, non revus systématiquement, sont conservés en annotations et ignorés par le scoreur actuel. Dates inférées des en-têtes et contrôlées contre la table des matières lors de l’annotation. Références non exhaustives; 25 questions proposées. q18 omise faute de référence reliant nécessité et devenir libre."
+    "annotation": "Annotation IA en deux passes sur les pages extraites persistées : recherche lexicale et lecture directe initiales, puis annotation aveugle indépendante par deux annotateurs IA en contextes neufs disposant uniquement des questions et des pages. Parcours des 531 pages avec variantes lexicales, lecture des candidates et de leur voisinage, distinction entre noyau et appuis secondaires, puis adjudication avec relecture des ajouts au noyau. Aucun résultat vectoriel utilisé pour sélectionner les références. Les lectures de la seconde passe ne sont pas indépendamment reproduites; prompts exacts, identités des modèles et sorties individuelles non conservés. Le brouillon initial ne comportait aucune validation humaine. Les références numériques contiennent uniquement le noyau fusionné, avec la première page des groupes équivalents. Les alternatives et les appuis secondaires de confiance moindre, non revus systématiquement, sont conservés en annotations et ignorés par le scoreur actuel. Dates inférées des en-têtes et contrôlées contre la table des matières lors de l’annotation. Références non exhaustives; 25 questions proposées. q18 omise faute de référence reliant nécessité et devenir libre. Human review of q01, q02, q03, q05, q08, q09, q11, q13, q17, q26 by GG on 2026-11-12; remaining proposed questions preserved. Approbations humaines explicites importées du formulaire local, après revue des pages extraites et de leur voisinage. Les dix listes numériques ont été approuvées sans correction ; les quinze autres questions restent proposées. Les notes IA sur les appuis secondaires restent historiques et ne constituent pas une validation de ces appuis. Le scoreur exact par pages existant est conservé."
   },
   "questions": [
     {
@@ -35,7 +35,11 @@
         }
       ],
       "annotation": "Terminologie. 198 distingue les termes; 199 précise leur différence de nature; 201 caractérise le passage vécu et la durée. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 197, 200, 202, 205, 215, 288, 303, 497. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q02",
@@ -71,7 +75,11 @@
         }
       ],
       "annotation": "Paraphrase. La transition entre états est vécue, plutôt que produite par une comparaison mentale; 288 reprend les variations comme des vecteurs. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 196, 197, 203, 204, 215, 216, 219, 286. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q03",
@@ -95,7 +103,11 @@
         }
       ],
       "annotation": "Terminologie. Discussion avec Comtesse, interprétation par l’effectuation de la puissance, puis priorité de la persévérance sur la tendance dans la lecture de Deleuze en 93. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 57, 92, 120, 384, 385, 418. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q04",
@@ -135,7 +147,11 @@
         }
       ],
       "annotation": "Terminologie. Identité de la puissance et de son effectuation à chaque instant. 66 et 71 sont des appuis secondaires, hors du noyau. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 42, 43, 58, 66, 67, 70, 71, 219, 286, 418. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q06",
@@ -207,7 +223,11 @@
         }
       ],
       "annotation": "Paraphrase. La domination peut reposer sur la tristesse et l’impuissance; 211 distingue explicitement puissance et pouvoir. Cette distinction appartient au noyau proposé. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 63, 210, 290, 294, 495. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q09",
@@ -247,7 +267,11 @@
         }
       ],
       "annotation": "Terminologie. La tristesse est reliée aux rapports incompatibles; les deux affects sont présentés comme directions de variation. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 68, 202, 203, 206, 210, 287. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q10",
@@ -295,7 +319,11 @@
         }
       ],
       "annotation": "Terminologie. Composition des rapports et connaissance de la cause; 305 éclaire le caractère commun à la partie et au tout par les rapports entre chyle, lymphe et sang. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 297, 300, 302, 307, 308, 313, 314, 447, 448, 451, 478, 507. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q12",
@@ -343,7 +371,11 @@
         }
       ],
       "annotation": "Paraphrase et synthèse entre séances. Ces pages développent la nage comme apprentissage de la composition des rapports. 303 ne développe pas cet exemple. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 296, 301, 308, 309, 448. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q14",
@@ -439,7 +471,11 @@
         }
       ],
       "annotation": "Paraphrase. 228 ouvre l’argument : devenir libre suppose un apprentissage expérimental de la sélection et de la composition, développé en 229–230. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 80, 227, 231, 233, 234, 251, 252, 296, 300. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     },
     {
       "id": "q19",
@@ -666,7 +702,11 @@
         }
       ],
       "annotation": "Paraphrase et synthèse entre séances. 313 distingue la généralité d’une notion commune de l’abstraction et précise qu’elle ne donne pas une essence; 314 et 451 développent les essences singulières. 479 porte sur le passage entre genres, traité par q16. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 317, 415, 478, 479, 481, 482. Hors des références numériques et des scores actuels.",
-      "status": "proposed"
+      "status": "validated",
+      "validation": {
+        "reviewer": "GG",
+        "validated_on": "2026-11-12"
+      }
     }
   ]
 }

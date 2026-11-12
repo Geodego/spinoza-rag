@@ -10,15 +10,14 @@ retrieval improvements or introducing answer generation.
 | Deliverable | Status |
 | --- | --- |
 | Evaluation CLI and synthetic metric tests | Implemented |
-| [Candidate gold set](../evaluation/gold.v1.json) | AI-annotated draft; every question remains `proposed`, with no human validation |
+| [Partial gold set](../evaluation/gold.v1.json) | Version `1.4.0-partial`: 10 human-validated questions, 15 unchanged proposed questions |
 | Equivalent-page groups and graded metrics | Deferred design; not implemented |
-| Official retrieval baseline and quality decision | Pending; no official metrics measured |
+| Official retrieval baseline and quality decision | First partial baseline measured; retrieval experiment deferred to [later improvements](future-improvements.md) |
 
-Complete the milestone by resolving the scoring design, validating the final
-references, freezing their file hash/version, running the baseline, and reviewing
-per-question failures. If an explicitly approved subset is used, identify it as
-a partial baseline. Choose retrieval changes or answer generation only after
-that review. No retrieval optimization or answer generation is included here.
+The first partial baseline uses the existing exact-page scorer and a frozen,
+human-approved subset; see [results and decision](#first-official-partial-baseline).
+Equivalent-page groups and graded scoring remain deferred. No retrieval
+optimization or answer generation is included in this measurement.
 
 ## Annotation format and provenance
 
@@ -37,13 +36,13 @@ corpus passages. The annotation file records:
 - `validation`: required only for validated questions, with `reviewer` and ISO
   `validated_on`. Proposed items cannot carry this record.
 
-The current draft uses the two-pass AI method: initial keyword search and direct
+The initial draft used the two-pass AI method: initial keyword search and direct
 page reading, then two independent blind annotators with questions and page files
 but no prior labels, followed by adjudication of added core pages. Neither pass
 uses vector results to choose references. This avoids circular evaluation in
 which the retriever effectively defines its own correct answers.
 
-Numeric references contain proposed **core** pages, with only the first page of
+Numeric references contain **core** pages from that draft, with only the first page of
 each equivalent transcription group. Lower-confidence supporting candidates and
 alternate page groups are recorded in annotations, which the current scorer
 ignores. Supporting candidates were not systematically reviewed. Per-question
@@ -52,7 +51,10 @@ relevance notes, exceptions and overlapping groups live in the gold file.
 Exact annotator prompts, model identities, independent raw outputs and a detailed
 adjudication log are unavailable. The merged labels and method are inspectable;
 the AI annotation experiment cannot be fully replayed or independently audited.
-AI annotation and adjudication do not constitute human validation.
+AI annotation and adjudication do not constitute human validation. The ten
+validated entries now carry GG's explicit human review; the other fifteen retain
+their proposed status. Approval covers the numeric reference lists, not the
+unstructured secondary candidates in the historical AI notes.
 
 ### Human validation
 
@@ -150,8 +152,9 @@ uv run --locked python -m spinoza_rag.evaluate \
   --output-dir storage/evaluations/baseline-v1
 ```
 
-The all-proposed draft causes a nonzero exit before service access and creates
-no report. For explicitly exploratory diagnostics, use `--include-proposed` and
+A gold set with no validated questions causes a nonzero exit before service
+access and creates no report. The current partial set evaluates its ten validated
+questions by default. For explicitly exploratory diagnostics, use `--include-proposed` and
 another new directory. Defaults are in [configuration](configuration.md); every
 flag has `--help`. The default output is `storage/evaluations/baseline`.
 Existing output paths, including symlinks, are rejected before embedding. Use a
@@ -183,6 +186,143 @@ annotated held-out questions if tuning follows. There is no agreed numeric
 acceptance threshold. Review coverage, alternate valid pages, duplicate evidence
 and fragmented arguments before choosing retrieval optimization or generation.
 
+## First official partial baseline
+
+Measured on 2026-11-12 at 11:19:11 Europe/Paris (10:19:11 UTC), on
+macOS 26.6.2 Intel (`x86_64`), Python 3.12.13.
+The existing evaluation CLI used the existing saved index and local Ollama
+HTTP embedding integration. No retrieval or generation code was changed.
+
+GG explicitly approved q01, q02, q03, q05, q08, q09, q11, q13, q17 and q26
+on 2026-11-12, without changing their reference lists. Their 45 reference
+entries are validated in gold version `1.4.0-partial`; all other 15 questions
+remain proposed and unchanged. The submitted version field was blank, so this
+version was assigned during transfer. Original AI notes were retained as
+historical context; secondary candidates were not promoted to references.
+
+Labels and membership were frozen before retrieval. The human decisions,
+transfer receipt and pre-review gold are retained in ignored
+`storage/reviews/retrieval-pilot-2026-11-12/`. The run is in ignored
+`storage/evaluations/baseline-partial-v1/report.json`.
+
+### Protocol and aggregate results
+
+Official validated-only stratum: 10 questions; 15 proposed questions excluded;
+no exploratory stratum. Protocol `page-blocks-v1`, 50 candidate chunks per
+question, exact physical PDF pages, unchanged flat references. Cutoffs count
+unique pages rather than chunks. Aggregates are macro means across questions.
+
+| k | Hit@k | Support Recall@k | MRR@k |
+| --- | --- | --- | --- |
+| 1 | 80.0% | 21.35% | 0.8000 |
+| 3 | 100.0% | 40.94% | 0.8833 |
+| 5 | 100.0% | 48.27% | 0.8833 |
+| 10 | 100.0% | 64.20% | 0.8833 |
+
+### Per-question results
+
+First-hit rank determines Hit and truncated MRR: at k below that rank
+both are zero; otherwise Hit is 1 and MRR is its reciprocal. Thus all
+questions have Hit@3/5/10 = 1; q13 has MRR 0.5 and q26 has MRR 1/3
+at those cutoffs, and the other eight have MRR 1. Full precision,
+ranked pages, chunks and distances are in the local JSON report.
+
+| ID / subject | First hit (PDF page; rank) | Recall@1 | Recall@3 | Recall@5 | Recall@10 | Missing approved pages at 10 |
+| --- | --- | --- | --- | --- | --- | --- |
+| q01 Affectio / affectus | 198; 1 | 20.00% | 20.00% | 40.00% | 60.00% | 199, 201 |
+| q02 Instant / lived change | 202; 1 | 14.29% | 28.57% | 28.57% | 42.86% | 198, 201, 287, 288 |
+| q03 Conatus / effort | 69; 1 | 25.00% | 25.00% | 25.00% | 25.00% | 58, 70, 93 |
+| q05 Power in act | 64; 1 | 50.00% | 50.00% | 50.00% | 100.00% | None |
+| q08 Domination / impotence | 61; 1 | 33.33% | 66.67% | 66.67% | 66.67% | 211 |
+| q09 Joy / sadness | 66; 1 | 12.50% | 37.50% | 37.50% | 62.50% | 205, 208, 209 |
+| q11 Common notions | 306; 1 | 25.00% | 50.00% | 50.00% | 50.00% | 303, 305 |
+| q13 Learning to swim | 298; 2 | 0.00% | 40.00% | 60.00% | 60.00% | 300, 450 |
+| q17 Becoming free | 229; 1 | 33.33% | 66.67% | 100.00% | 100.00% | None |
+| q26 Relations / singular essences | 477; 3 | 0.00% | 25.00% | 25.00% | 75.00% | 313 |
+
+### Failure analysis and evidence limits
+
+Returned passages were inspected from persisted chunk records. This is
+a qualitative diagnostic, not a new human validation or an extra metric.
+No reference lists or statuses were changed after seeing vector results.
+All corpus text used for this inspection stays in ignored storage.
+
+- **q01:** First chunk on page 198 names the distinction; the passage definition is in the returned page-287 chunk at chunk/page rank 5. Page 201 is only page rank 22.
+- **q02:** Pages 202 and 200 lead; 199 arrives at page rank 8. Pages 287 and 288 are absent from the 50-chunk pool.
+- **q03:** Only page 69 is credited through page rank 10. The direct effort discussion on page 70 is chunk rank 14 / page rank 13; page 58 is page rank 22 and page 93 is absent from the pool. The first hit supplies framing, not the full two-part answer.
+- **q05:** Page 64 leads and contains the central claim. Two initial chunks share that page; page 65 is page rank 8. Raw chunk rank and unique-page rank differ.
+- **q08:** The leading page-61 chunk directly explains power founded on sadness; page 60 is second. The explicit contrast on page 211 arrives at chunk rank 14 / page rank 13. This is a coverage gap, not a complete retrieval miss.
+- **q09:** Five of eight approved pages appear by page rank 10. Page 208 is absent from the pool, 209 is page rank 12, and 205 is page rank 14. The leading pages already include definitions and explanatory evidence.
+- **q11:** Page 306 leads with the cause / part-whole justification; page 304 is rank 3. Page 303 is absent from the pool and page 305 is page rank 21.
+- **q13:** The unannotated top page 448 is a relevant introduction on inspection, but receives no official credit. Page 298 is the first approved hit at rank 2; the page-449 chunk at rank 4 explains rhythmic composition. Approved continuation pages 300 and 450 are page ranks 16 and 26.
+- **q17:** All three approved pages appear by page rank 4. The first page-229 chunk explains becoming free but omits the experimental-learning passage later on that page; the page-230 chunk at rank 4 supplies selection and composition.
+- **q26:** Top pages 346 and 325 discuss bodily composition rather than the requested contrast. The returned page-477 chunk at rank 3 explicitly states the limit of relational knowledge. Pages 451 and 314 arrive at page ranks 6 and 10; page 313 is absent from the pool.
+
+There are no complete misses by k=3, but high Hit/MRR does not establish
+complete answer support. Recall covers the approved non-exhaustive pages;
+several are alternative explanations or consecutive parts of an argument.
+Missing one is not automatically an answer failure. Unannotated results
+such as page 448 remain unjudged for scoring. The ten selected questions
+are small, correlated (especially q01/q02), and not a representative
+statistical sample. No numeric acceptance threshold was agreed.
+
+### Decision and deferred follow-up
+
+The initial baseline review recommended a focused retrieval experiment for
+incomplete conatus evidence before grounded generation. The q08 evidence is
+already useful at rank 1; its lower page coverage alone does not justify a
+broad retrieval overhaul or reranking.
+
+On 2026-11-12, the project owner chose to postpone the adjacent-page experiment.
+Its hypothesis, scope and comparison criteria are recorded in
+[later improvements](future-improvements.md#adjacent-page-context). It is no
+longer an immediate prerequisite for scoping the next milestone. The measured
+coverage limitations remain, and this deferral does not establish complete
+answer support or authorize generation work. The gold set, baseline report and
+retrieval implementation remain unchanged by this decision.
+
+When generation is authorized, retain the existing Ollama HTTP integration,
+explicitly disable Qwen3 thinking, preserve citation provenance through
+short source labels, measure Ollama prompt-processing and generation times
+separately, and store corpus-derived examples outside Git. Answer generation,
+new frameworks, reranking and retrieval enhancements remain unimplemented.
+
+### Frozen configuration fingerprints
+
+| Item | Value |
+| --- | --- |
+| Gold version | `1.4.0-partial` |
+| Gold exact-byte SHA-256 | `dda3c165aeb8c870fb58f49823697a5a4cd44c6656f2b52f9256338c6582d5fd` |
+| PDF document ID | `sha256:66ddeacf8dc52cc7dde8156cd1fdd7766dc0c2587854f94a3b78442117966862` |
+| Persisted pages SHA-256 | `77fbfefc622eef5b3e7ce2790bc40c53a3d6ad0460e7f3ef841c53338b0ef023` |
+| Index configuration SHA-256 | `a49f779a2fd2ebe11ca4cb986ba4596576fe49547b46041dd35afa7c34b3f7dd` |
+| Chunks manifest SHA-256 | `c3a268a85f054ec36591b4d92eaa9782e0e4fffd5132d4cb1af131a1f706e1d8` |
+| Embedding model | `qwen3-embedding:0.6b` |
+| Embedding digest | `ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d` |
+| Ollama version | `0.40.16` |
+| Collection / metric / dimensions / chunks | `spinoza / cosine / 1024 / 1194` |
+| Chunking | `450 tokens; overlap target 70; hard page boundaries; revision 1` |
+| Tokenizer SHA-256 | `def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a` |
+| Extraction | `pypdf 7.0.1; layout; line_endings_only` |
+| Runtime packages | `spinoza-rag 0.1.0; Chroma 1.5.9; tokenizers 0.22.2; splitter 1.1.3` |
+
+Query instruction (unchanged):
+
+`Given a question about Deleuze's lectures on Spinoza, retrieve relevant lecture passages that answer the question.`
+
+The JSON report also records SHA-256 hashes of evaluate.py, search.py,
+config.py, index.py and embeddings.py, plus the complete index manifest.
+Approximate search and tie ordering can vary on reruns. This baseline did
+not measure inference latency or answer quality.
+
+To reproduce with the same local artifacts, choose a fresh output path:
+
+```sh
+uv run --locked python -m spinoza_rag.evaluate \
+  --gold-set evaluation/gold.v1.json --index-dir storage/index \
+  --chunk-limit 50 --output-dir storage/evaluations/baseline-partial-v1-rerun
+```
+
 ## Earlier informal observations
 
 These observations predate the gold-set framework and are not benchmark labels.
@@ -205,6 +345,6 @@ startup. All 30 top-5 passages were found on their cited persisted pages:
 | Conatus | 69, then unrelated | 0.30, ~0.40 | One relevant hit, then weak |
 | Puissance et pouvoir | 47, 64 | 0.30–0.32 | Related, no direct contrast |
 
-The last two are investigation leads, not sufficient evidence for optimization.
-Extraction quality, hard page boundaries and short/header fragments remain open
-questions for a validated baseline.
+These earlier questions differ from the frozen partial baseline and are not a
+fair before/after comparison. The measured failure analysis above supersedes
+these informal investigation leads for the next retrieval decision.

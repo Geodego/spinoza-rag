@@ -9,7 +9,7 @@ question in French and get the passages that address it, each cited to its
 exact PDF page and lecture date.
 
 The goal is source-grounded answers to philosophical questions. Retrieval is
-implemented; a human-validated retrieval baseline is the current milestone.
+implemented; the first human-validated partial retrieval baseline is measured.
 Everything runs on one machine: no cloud services, no paid APIs, and the corpus
 never leaves the disk.
 
@@ -135,17 +135,17 @@ On the current local PDF (531 pages, 13 lecture dates):
   *conatus* and *puissance/pouvoir* were weaker. Every returned passage was
   verified to appear on its cited page.
 
-These are informal observations, not a validated quality benchmark. The
-[retrieval evaluation](docs/evaluation.md) measures whether Qwen embeddings,
-Chroma, and the current chunks retrieve the pages needed for French philosophical
-questions. This evidence will guide the choice between improving retrieval and
-proceeding to answer generation. It measures page-level Hit@k, annotated-support
-Recall@k, and MRR@k at 1, 3, 5, and 10.
+Those spot checks are informal. The first official partial baseline uses ten
+human-validated questions and excludes fifteen proposed questions. Its metrics,
+per-question failures and frozen configuration are documented in the
+[retrieval evaluation](docs/evaluation.md#first-official-partial-baseline).
+Finding one relevant page does not establish complete answer support.
+The targeted retrieval follow-up is [deferred](docs/future-improvements.md).
 
 ### Limitations
 
-- No official retrieval baseline exists yet: all initial annotations are
-  proposed and excluded from official metrics until human approval.
+- The official baseline is a small, deliberately selected partial set; its
+  exact-page metrics do not establish complete supporting evidence or answer quality.
 - No answer generation, reranking, or hybrid (keyword + vector) search.
 - Hard page boundaries can split an argument; short fragments and retained
   headers can add noise.
@@ -162,15 +162,15 @@ page metrics, annotation status, persistence, restart,
 compatibility checks, errors, and the guarantee that search never re-embeds
 documents.
 
-The evaluation framework and AI annotation preparation are complete for the
-current draft. The 25-question set remains proposed; human validation, approval
-of the equivalence/graded-scoring changes, and the official baseline are pending.
-See [current status and next steps](docs/evaluation.md#current-status-and-next-steps)
-for what is implemented, the remaining decisions, and the completion criteria.
+The evaluation framework, human validation of the pilot subset, and first
+official partial baseline are complete. Equivalent-page and graded-scoring
+changes remain deferred. See
+[current status and next steps](docs/evaluation.md#current-status-and-next-steps).
 
-The next milestone will be chosen after reviewing the validated baseline:
-retrieval improvements for demonstrated weaknesses, or local answer generation
-with citations if retrieval is adequate.
+The adjacent-page retrieval experiment is deferred. Its scope and criteria
+for resuming are recorded in [later improvements](docs/future-improvements.md),
+alongside deferred evaluation design. The next milestone can be scoped
+separately; no retrieval enhancements or answer generation have been implemented.
 
 LangGraph orchestration, agents, and a web interface are out of scope for now.
 
