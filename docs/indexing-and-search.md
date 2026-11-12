@@ -17,7 +17,8 @@ and search. For the commands, see the [README quickstart](../README.md#quickstar
 Paths between artifacts are recorded relatively, so the storage tree can move
 together. Staleness is checked against saved page/chunk artifacts. If the original
 PDF changes, explicitly rerun extraction first; indexing and search never read
-that PDF to guess whether extraction is out of date.
+that PDF to guess whether extraction is out of date. Extraction itself is
+described in [PDF extraction](ingestion.md).
 
 ## Local model stack
 
@@ -28,11 +29,21 @@ Only this tokenizer JSON is needed; PyTorch and Transformers are not required.
 The model download is about 639 MB and the tokenizer about 11.4 MB. Neither is
 stored in Git. Application commands never pull a missing model automatically.
 
-The verified local stack uses Chroma 1.5.9, langchain-text-splitters 1.1.3,
-tokenizers 0.22.2, and Ollama 0.40.16 on macOS Intel. Recent ONNX Runtime
-releases, a transitive Chroma dependency, have no Intel macOS wheels, so uv must
-resolve for that platform (`required-environments`); the lock currently selects
-ONNX Runtime 1.23.2. See
+| Component | Used for | Verified version |
+| --- | --- | --- |
+| [tokenizers](https://github.com/huggingface/tokenizers) with the pinned Qwen3-Embedding tokenizer JSON | Counting chunk tokens | 0.22.2 |
+| [langchain-text-splitters](https://reference.langchain.com/python/langchain-text-splitters/) `RecursiveCharacterTextSplitter` | Splitting page text into chunks | 1.1.3 |
+| [Ollama](https://ollama.com/) server with `qwen3-embedding:0.6b` | Embedding chunks and questions (1,024 dimensions) | 0.40.16 |
+| Python standard library (`urllib`) | Calling the Ollama HTTP API; no Ollama client package | Python 3.12 |
+| [Chroma](https://docs.trychroma.com/) `PersistentClient` | Storing vectors, passages, and metadata; cosine nearest-neighbor search | 1.5.9 |
+
+Library versions are those in `uv.lock` on 2026-11-12, which stays authoritative.
+The Ollama version and model digest are recorded in each index manifest; the
+row above is the one in the current local index, on macOS Intel.
+
+Recent ONNX Runtime releases, a transitive Chroma dependency, have no Intel
+macOS wheels, so uv must resolve for that platform (`required-environments`);
+the lock currently selects ONNX Runtime 1.23.2. See
 [the knowledge entry](knowledge/chroma-onnxruntime-intel-macos.md).
 ONNX is not used for embeddings: Chroma's default embedding function is
 explicitly disabled. Chroma telemetry is disabled.
@@ -77,12 +88,84 @@ normalization revision, LangChain/tokenizer versions, and chunk JSONL checksum.
 Identical chunking runs reuse verified output without rewriting it; changed inputs
 or settings require a new output directory.
 
-## Embeddings and the Chroma index
+## Index build, step by step
 
-Indexing uses `/api/embed` with `truncate=false`, validates vectors, and stores
-normalized embeddings in a cosine Chroma collection. Documents are embedded
-without a query prefix. Questions use Qwen's `Instruct: ...\nQuery: ...` format;
-the instruction is recorded in the index configuration.
+`python -m spinoza_rag.index` runs `index_chunks` in `index.py`:
+
+1. **Load and verify chunks.** `load_chunks` requires exactly `chunks.jsonl`
+   and `manifest.json`, checks the chunk checksum, reopens the page artifacts
+   to check that they are unchanged, and recomputes every chunk ID.
+2. **Identify the embedding model.** `OllamaClient.identity` asks Ollama for
+   the installed models (`GET /api/tags`) and its version (`GET /api/version`).
+   A missing model stops the run with the `ollama pull` command to run.
+3. **Fingerprint the configuration.** The chunk manifest hash, model name and
+   digest, Ollama version, collection name, cosine metric, and query
+   instruction form the index configuration; its SHA-256 is the pipeline
+   fingerprint. An existing `manifest.json` must match exactly (see
+   [compatibility](#index-compatibility-and-recovery)); otherwise a new one is
+   written with state `building`.
+4. **Open the collection.** Chroma's `PersistentClient` opens
+   `storage/index/chroma/` and creates or reopens the collection with
+   `embedding_function=None`, HNSW cosine space, and the fingerprint as
+   collection metadata.
+5. **Find what is already stored.** Every stored record's ID, text, and
+   metadata is compared with the chunks; IDs already present are skipped.
+6. **Embed missing chunks in batches** (8 by default). Each batch is one
+   `POST /api/embed` request with `truncate=false`, so an overlong chunk fails
+   instead of being cut, and `keep_alive` keeps the model loaded between
+   batches. Documents are embedded without an instruction prefix. The client
+   rejects a wrong vector count and empty, non-finite, or zero vectors, then
+   L2-normalizes each vector itself. All vectors must share one dimension.
+7. **Store, then checkpoint.** `collection.upsert` writes IDs, passages,
+   metadata, and vectors; only then is `manifest.json` rewritten with the
+   dimension and elapsed time. A batch stored just before a failed checkpoint
+   is found at step 5 next time and not embedded again.
+8. **Verify and mark ready.** After the last batch, the collection must hold
+   exactly one unmodified record per chunk; the manifest state becomes `ready`.
+
+The command prints a JSON summary with `embedded_this_run`, `reused`,
+`dimensions`, and timings.
+
+## Query path, step by step
+
+`python -m spinoza_rag.search` and the [research agent](agent-workflow.md)
+both call `search` in `search.py`. The
+[evaluation](evaluation.md) opens the index once and then calls the same
+`search_collection` for every question.
+
+1. **Validate the request.** The question must be nonempty and `top_k`
+   positive (5 by default).
+2. **Reopen and verify the index** (`open_index`). The index manifest and
+   `chroma.sqlite3` must exist and the state must be `ready`. The chunk and
+   page artifacts are verified again as in index step 1, Ollama is asked again
+   for the model digest and version, and the recomputed configuration must
+   equal the saved one, so a model re-pulled under the same tag is rejected.
+   The collection is opened with `embedding_function=None`, and every stored
+   record, the record count, and the vector dimension are checked. These
+   checks read the whole collection on each search, which is cheap at the
+   current 1,194 chunks.
+3. **Embed the question only.** The question is wrapped in Qwen's query
+   format, `Instruct: <query instruction>\nQuery: <question>`, using the
+   instruction in [configuration](configuration.md), and sent through the same
+   `POST /api/embed` call and normalization as documents. Its length must
+   equal the index dimension.
+4. **Find nearest passages.** `collection.query` asks Chroma for
+   `min(top_k, count)` neighbors of the question vector in the HNSW cosine
+   index, including passages, metadata, and distances. Document vectors are
+   read from disk, so a restarted process gives the same results without
+   re-embedding.
+5. **Return results.** Each result keeps Chroma's order and carries the chunk
+   ID, passage text, provenance metadata, and cosine distance. The Chroma
+   client is closed.
+
+The search CLI prints, for each result, the source filename, one-based PDF
+page range, inferred lecture date, stable chunk ID, cosine distance, and
+passage. Smaller distances are closer; a distance is not an
+answer-confidence score, and the nearest neighbors are returned even for
+unrelated questions. No answer is generated: the CLI stays retrieval-only.
+Ollama must be running, since the question is embedded at query time.
+
+## Embedding storage
 
 Chunk embeddings are stored only in `storage/index/chroma/`. Neither
 `chunks.jsonl` nor the index `manifest.json` contains vectors; the manifest
@@ -113,24 +196,14 @@ passages, and metadata are checked against persisted chunks when reopening.
 
 Stable IDs and upserts prevent duplicates. Repeated indexing reports
 `embedded_this_run: 0` when complete. Each completed batch is checkpointed; an
-interrupted or unavailable-server run resumes only missing IDs. A vector batch
-committed immediately before a checkpoint failure is recovered without embedding
-it again. Search rejects incomplete indexes. Concurrent writers are outside this
-sequential baseline's scope.
+interrupted or unavailable-server run resumes only missing IDs. Search rejects
+incomplete indexes. Concurrent writers are outside this sequential baseline's
+scope.
 
 Index and search accept `--batch-size` (index only), `--timeout`, and
 `--ollama-url`; a missing model or unreachable service produces an actionable
 error. Schema/configuration changes are never automatically applied
 to old indexes. Keep the existing output and choose a new directory to rebuild.
-
-## Search output
-
-Search reopens the persisted index and embeds only the question; document
-vectors are read from disk, so a restarted process gives the same results
-without re-embedding. Ollama must be running for query embeddings. No answer is
-generated; the CLI prints the nearest passages, source filename, one-based PDF
-page range, inferred lecture date, stable chunk ID, and cosine distance (smaller
-is closer, not an answer-confidence score).
 
 ## Evaluating retrieval
 

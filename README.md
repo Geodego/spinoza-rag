@@ -71,7 +71,8 @@ Key design decisions:
 - **Layout-mode extraction is the default.** Plain extraction split words
   apart on sampled pages; layout mode fixed them. Both remain reproducible.
 
-Research commands and architecture: [local research agent](docs/research-agent.md).
+Research commands: [local research agent](docs/research-agent.md);
+how a run works: [agent workflow](docs/agent-workflow.md).
 
 Details: [PDF extraction](docs/ingestion.md) ·
 [chunking, indexing, and search](docs/indexing-and-search.md) ·

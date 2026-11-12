@@ -147,6 +147,6 @@ instead of silently labelling those drafts grounded. Adjacent-page expansion,
 reranking and retrieval/evaluation changes remain deferred. The gold set and
 retrieval baseline were not modified or rerun for these runs.
 
-See [the design tradeoffs](research-agent.md#design-tradeoffs) for the
+See [the design tradeoffs](agent-workflow.md#design-tradeoffs) for the
 architectural constraints behind these results. Unsupported synthesis remains
 the main observed limitation of answer generation.
