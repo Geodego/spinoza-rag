@@ -3,6 +3,7 @@
 [![CI](https://github.com/Geodego/spinoza-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/Geodego/spinoza-rag/actions/workflows/ci.yml)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![Runs locally](https://img.shields.io/badge/inference-local%20%28Ollama%29-informational)
+![Agent: LangChain + LangGraph](https://img.shields.io/badge/agent-LangChain%20%2B%20LangGraph-informational)
 
 A fully local research CLI for Gilles Deleuze's lectures on Spinoza. Ask a
 question in French and inspect retrieved passages or request a bounded answer
