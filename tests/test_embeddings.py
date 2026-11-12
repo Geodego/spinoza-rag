@@ -41,7 +41,9 @@ def test_requests_are_batched_untruncated_and_normalized():
         return io.BytesIO(json.dumps({"embeddings": [[3.0, 4.0], [0.0, 2.0]]}).encode())
 
     fake_opener(client, respond)
-    assert client.embed(["first", "second"]) == [[0.6, 0.8], [0.0, 1.0]]
+    first, second = client.embed(["first", "second"])
+    assert first == pytest.approx([0.6, 0.8])
+    assert second == pytest.approx([0.0, 1.0])
     body = json.loads(requests[0].data)
     assert body["input"] == ["first", "second"]
     assert body["truncate"] is False

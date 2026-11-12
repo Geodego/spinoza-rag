@@ -54,17 +54,7 @@ uv build --no-sources
 - Commit pyproject.toml and uv.lock together when dependencies change.
 - Use `uv add` / `uv add --dev` to change dependencies; do not hand-edit uv.lock.
 - Use `uv lock --upgrade-package <name>` for intentional, focused updates.
-- Put application code in src/spinoza_rag/ and tests in tests/, one test file
-  per module (tests/test_<module>.py). Share fixtures through tests/conftest.py;
-  under importlib mode, tests cannot import helper modules without path hacks.
-- Keep one behavior per test, use `match=` with `pytest.raises`, and
-  parametrize with named case functions or `ids=` instead of if/elif chains.
-  Ruff's PT rules enforce raises, assertion, and parametrize style; the
-  other conventions rely on review.
-- Test installed imports; do not add sys.path or PYTHONPATH workarounds.
-- Unit tests must run without Ollama, model downloads, or the real corpus.
-- Add synthetic behavior tests with features. Tests cover PDF ingestion, chunking,
-  persistent indexing, and retrieval with fake embeddings; never require Ollama.
+- Put application code in src/spinoza_rag/ and tests in tests/ (see Testing).
 - Indexing and search must read persisted page/chunk artifacts, never the PDF.
   Preserve configuration fingerprints and reject stale or incompatible indexes.
 - Define tunable defaults (paths, models, stage and future agent settings) in
@@ -75,6 +65,39 @@ uv build --no-sources
 - Fix lint, format, and test failures before reporting completion or committing.
   Report checks actually executed and any unverified results.
 - Never bypass Git hooks or quality checks without explicit authorization.
+
+## Testing
+
+- One file per module: tests/test_<module>.py. A module covered only through
+  another module's public API (such as artifacts.py) needs no file of its own.
+  Shared fixtures go in tests/conftest.py; single-use fixtures stay in their
+  file. Under importlib mode, share helpers through fixtures, not imports.
+- Write plain test functions named test_<subject>_<expected_behavior>. Use a
+  Test<Subject> class only to group tests sharing fixtures or marks; never
+  subclass unittest.TestCase or keep state on self.
+- Test one behavior per test: setup, then action, then assertions. Avoid
+  conditionals and loops in test bodies except to build input data.
+- Parametrize when the same assertions apply to several inputs, with `ids=`
+  or named case functions; write separate tests when expected outcomes differ.
+- Use plain assert, pytest.approx for floats, and pytest.raises(..., match=...)
+  around a single statement.
+- Isolate with tmp_path, monkeypatch, and capsys. Never touch real storage/,
+  data/, or models/, the network, or the clock. Tests must pass in any order.
+- Test public behavior. Patch only at boundaries (PDF parser, HTTP, filesystem
+  failures), prefer small protocol fakes such as FakeEmbedder over mocks, and
+  avoid private attributes when a public seam exists.
+- Use subprocesses only when the process boundary is the behavior: CLI
+  defaults, restart persistence, or packaging.
+- Unit tests never require Ollama, model downloads, or the real corpus; add
+  synthetic behavior tests with each feature. Any future Ollama test must be
+  opt-in behind a registered marker and excluded by default.
+- Warnings fail tests; add a narrow filterwarnings entry only for an understood
+  third-party warning. Register new markers in pyproject.toml; give every skip
+  and xfail a reason.
+- Start bug fixes with a test that reproduces the bug.
+- Test installed imports; do not add sys.path or PYTHONPATH workarounds.
+- Ruff's PT rules enforce raises, assertion, parametrize, and fixture style;
+  the other rules rely on review.
 
 ## Python conventions
 
