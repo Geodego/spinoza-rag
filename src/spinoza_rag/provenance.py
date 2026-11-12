@@ -6,6 +6,24 @@ import re
 from spinoza_rag.config import AGENT
 from spinoza_rag.search import SearchResult
 
+_CITATION_GROUP = re.compile(r"\[\s*(S[^\]]*)\]")
+_PAREN_LABEL = re.compile(r"\(\s*(S\d+)\s*\)")
+
+
+def citation_labels(answer: str) -> list[str]:
+    """Return source tokens from bracket groups and single numeric parentheses.
+
+    Split bracket groups on commas, semicolons, and whitespace. Preserve malformed
+    tokens such as Sx so that label resolution can reject them.
+    """
+    tokens = [
+        token
+        for group in _CITATION_GROUP.findall(answer)
+        for token in re.split(r"[,;\s]+", group.strip())
+        if token
+    ]
+    return tokens + _PAREN_LABEL.findall(answer)
+
 
 class Source(SearchResult):
     """A retrieved chunk with a stable short label within one run."""
@@ -47,6 +65,6 @@ class Evidence:
         return payload
 
     def unknown_citations(self, answer: str) -> list[str]:
-        """Return unresolved bracketed source labels, without judging entailment."""
+        """Return unresolved source tokens, without judging entailment."""
         known = {source["label"] for source in self.sources}
-        return sorted(set(re.findall(r"\[(S[^\]\s]*)\]", answer)) - known)
+        return sorted(set(citation_labels(answer)) - known)

@@ -79,6 +79,11 @@ If any search fails and no evidence is admitted, the run fails with a nonzero
 status. The fixed French no-evidence response is reserved for runs without
 retrieval errors, including skipped retrieval or an exhausted evidence budget.
 
+Citation checks share a parser for single labels, comma- or semicolon-separated
+bracket groups (such as `[S1, S2]`), and single numeric labels in parentheses
+(such as `(S1)`). Every parsed token must resolve to an admitted source;
+malformed bracket tokens and unknown labels are rejected.
+
 A valid label proves only that a source exists in the registry. It does **not**
 prove entailment, relevance, completeness or factual grounding. Human inspection
 of the answer against its actual passages remains necessary. Vector search

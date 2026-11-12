@@ -310,3 +310,33 @@ def test_partial_retrieval_failure_keeps_admitted_evidence(retrieve):
     assert result["answer"] == "Synthetic evidence [S1]."
     assert result["sources"][0]["chunk_id"] == "available"
     assert [e["event"] for e in result["events"]].count("search_error") == 1
+
+
+@pytest.mark.parametrize(
+    "citation",
+    ["[S1, S2]", "[S1,S2]", "[S1; S2]", "(S1)"],
+    ids=["spaced-group", "compact-group", "semicolon", "parenthesis"],
+)
+def test_agent_accepts_known_grouped_citations(retrieve, citation):
+    model = ToolModel(
+        responses=[
+            tool_message("a", "b"),
+            AIMessage(content=f"Synthetic evidence {citation}."),
+        ]
+    )
+    result = research("Question", retrieve, model=model)
+    assert result["answer"] == f"Synthetic evidence {citation}."
+
+
+@pytest.mark.parametrize(
+    "citation", ["[S1, S9]", "(S9)"], ids=["mixed-group", "parenthesis"]
+)
+def test_agent_rejects_unknown_label_alongside_known_citation(retrieve, citation):
+    model = ToolModel(
+        responses=[
+            tool_message("a", "b"),
+            AIMessage(content=f"Claim [S1]; claim {citation}."),
+        ]
+    )
+    with pytest.raises(ResearchError, match=r"Unknown citation labels.*S9"):
+        research("Question", retrieve, model=model)

@@ -1,7 +1,6 @@
 """Run a fresh, bounded local research agent over the saved-index search path."""
 
 import json
-import re
 from collections.abc import Callable
 from threading import Lock
 from time import monotonic
@@ -16,7 +15,7 @@ from langchain_core.tools import BaseTool, tool
 from langsmith import tracing_context
 
 from spinoza_rag.config import AGENT
-from spinoza_rag.provenance import Evidence, Source
+from spinoza_rag.provenance import Evidence, Source, citation_labels
 from spinoza_rag.search import SearchResult
 
 Retriever = Callable[[str], list[SearchResult]]
@@ -241,7 +240,9 @@ def research(
                 raise ResearchError(
                     "Answer reached the generation limit; draft withheld."
                 )
-            unknown = session.evidence.unknown_citations(answer)
+            labels = set(citation_labels(answer))
+            known_labels = {source["label"] for source in session.evidence.sources}
+            unknown = sorted(labels - known_labels)
             if unknown:
                 session.emit({"event": "unknown_citations", "labels": unknown})
             if not session.evidence.sources and any(
@@ -253,7 +254,7 @@ def research(
                 answer = "Les preuves recueillies sont insuffisantes pour répondre."
             elif unknown:
                 raise ResearchError(f"Unknown citation labels: {unknown}")
-            elif not re.search(r"\[S\d+\]", answer):
+            elif not labels.intersection(known_labels):
                 # Permit only an explicit, claim-free refusal without citations.
                 if answer.strip() not in {
                     INSUFFICIENT_ANSWER,

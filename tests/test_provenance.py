@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from spinoza_rag.provenance import Evidence
 
 
@@ -47,3 +49,25 @@ def test_evidence_detects_unknown_labels_without_claiming_grounding():
     assert evidence.unknown_citations(
         "Claim [S1], invented [S99], malformed [Sx]."
     ) == ["S99", "Sx"]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    ["Claim [S1] and [S1, S9].", "Claim [S1] and (S9)."],
+    ids=["mixed-group", "parenthesis"],
+)
+def test_evidence_detects_unknown_labels_in_all_citation_groups(answer):
+    evidence = Evidence()
+    evidence.add([passage(), passage("chunk-b")])
+    assert evidence.unknown_citations(answer) == ["S9"]
+
+
+@pytest.mark.parametrize(
+    "citation",
+    ["[S1, S2]", "[S1,S2]", "[S1][S2]", "[ S1; S2 ]", "(S1)"],
+    ids=["spaced", "compact", "adjacent", "semicolon", "parenthesis"],
+)
+def test_evidence_accepts_known_citation_groups(citation):
+    evidence = Evidence()
+    evidence.add([passage(), passage("chunk-b")])
+    assert evidence.unknown_citations(f"Claim {citation}.") == []
