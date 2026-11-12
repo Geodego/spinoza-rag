@@ -73,9 +73,24 @@ def normalize_page(text: str, page_number: int) -> str:
 def _lecture_sections(
     text: str, page_number: int, previous_date: str | None
 ) -> tuple[list[tuple[str, str | None]], str | None]:
+    """Split page text at standalone lecture-date headings.
+
+    Args:
+        text: Raw page text from the extraction artifacts.
+        page_number: One-based PDF page, used to drop an edge page number.
+        previous_date: The ISO lecture date in effect at the end of the
+            previous page, or None before the first heading.
+
+    Returns:
+        Normalized ``(text, lecture_date)`` sections in page order, and the
+        date in effect at the end of this page, which carries into the next.
+        A contents page is returned whole, undated, and resets the date so its
+        listed dates never start lectures.
+    """
     top = " ".join(text.splitlines()[:12]).casefold()
     if (
         "table des matières" in " ".join(top.split())
+        # Dot leaders followed by page numbers, as in a table of contents.
         or len(re.findall(r"\.{4,}\s*\d+", text)) >= 3
     ):
         return [(normalize_page(text, page_number), None)], None
@@ -86,6 +101,7 @@ def _lecture_sections(
         try:
             date = datetime.strptime(match.group(1), "%d.%m.%Y").date().isoformat()
         except ValueError:
+            # A date-shaped line that is not a real date stays ordinary text.
             continue
         before = normalize_page(text[cursor : match.start()], page_number)
         if before:
@@ -98,6 +114,11 @@ def _lecture_sections(
 
 
 def _chunk_id(row: Mapping[str, object], configuration: Mapping[str, object]) -> str:
+    """Return a stable ID hashed from a chunk's fields and chunking settings.
+
+    Any change to the text, provenance, or chunking configuration changes the
+    ID, so an index can never reuse vectors embedded for different chunks.
+    """
     identity = {key: value for key, value in row.items() if key != "chunk_id"}
     return (
         "sha256:"
@@ -202,8 +223,11 @@ def chunk_pages(
     tokenizer = Tokenizer.from_str(tokenizer_data.decode("utf-8"))
 
     def token_count(text: str) -> int:
+        """Count text tokens; special tokens are excluded from the limit."""
         return len(tokenizer.encode(text, add_special_tokens=False).ids)
 
+    # Prefer paragraph, line, then sentence breaks before splitting words.
+    # Keeping separators at the end leaves punctuation with its sentence.
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=config.max_tokens,
         chunk_overlap=config.overlap_tokens,

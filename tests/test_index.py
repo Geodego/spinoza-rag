@@ -39,6 +39,11 @@ def test_interrupted_index_resumes_only_missing_ids(pipeline, make_embedder):
 def test_upsert_before_checkpoint_failure_does_not_reembed(
     pipeline, make_embedder, monkeypatch
 ):
+    """Simulate a crash after vectors are stored but before the checkpoint.
+
+    The second checkpoint write fails; the next run must trust the stored IDs
+    instead of paying for the embedding again.
+    """
     data = pipeline(["Une joie."])
     calls = 0
 

@@ -45,6 +45,10 @@ def test_overlap_repeats_unique_boundary_tokens(pipeline):
 
 
 def test_lecture_boundaries_inside_pages_are_not_misattributed(pipeline):
+    """Page 2 ends one lecture and starts the next; page 4 is a contents page.
+
+    The contents page lists dates that must not start lectures or carry over.
+    """
     data = pipeline(
         [
             "02.12.1980\n\nUne première leçon.",

@@ -3,6 +3,7 @@ import sys
 
 
 def test_package_imports_outside_repository(tmp_path):
+    """Run isolated (-I) from another directory, so only an install can import."""
     result = subprocess.run(
         [
             sys.executable,

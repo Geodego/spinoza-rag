@@ -25,7 +25,16 @@ def jsonl_bytes(records: Iterable[Mapping[str, object]]) -> bytes:
 
 
 def publish_artifacts(output_dir: Path, artifacts: dict[str, bytes]) -> None:
-    """Publish a complete directory or reuse byte-identical existing artifacts."""
+    """Publish a complete directory or reuse byte-identical existing artifacts.
+
+    Files are written to a sibling temporary directory that is renamed into
+    place, so readers never see a partial result. Existing content is never
+    modified.
+
+    Raises:
+        FileExistsError: The destination exists with different or incomplete
+            contents.
+    """
     if output_dir.is_symlink():
         raise ValueError("The output directory must not be a symlink.")
     if output_dir.exists():

@@ -24,6 +24,9 @@ from spinoza_rag.config import EXTRACTION, PATHS, ExtractionMode
 # Bump when the output format or extraction behavior changes.
 _SCHEMA_VERSION = 1
 
+# Malformed content can surface as plain Python errors from pypdf internals,
+# not only PyPdfError. Catching them per page keeps one bad page from
+# stopping the whole extraction.
 _PAGE_ERRORS = (
     PyPdfError,
     ValueError,
@@ -70,6 +73,11 @@ class ExtractedDocument:
 
 
 class _PdfWarnings(logging.Handler):
+    """Collect pypdf log warnings so each can be attributed to its page.
+
+    pypdf reports recovered problems through logging rather than exceptions.
+    """
+
     def __init__(self) -> None:
         super().__init__(level=logging.WARNING)
         self.messages: list[str] = []
@@ -79,6 +87,11 @@ class _PdfWarnings(logging.Handler):
 
 
 def _text_issues(text: str, min_page_characters: int) -> list[str]:
+    """Return review flags for extracted page text.
+
+    ``empty_text`` and ``short_text`` are mutually exclusive. Newlines and tabs
+    are normal layout characters, not suspicious control characters.
+    """
     issues = []
     non_whitespace = sum(not character.isspace() for character in text)
     if not non_whitespace:
@@ -128,7 +141,11 @@ def extract_pdf(
     logger = logging.getLogger("pypdf")
     logger.addHandler(collector)
     try:
+        # Parse the bytes already hashed, so the fingerprint matches the content
+        # read even if the file changes on disk meanwhile.
         with BytesIO(data) as stream:
+            # Non-strict mode recovers from common spec violations; the
+            # recoveries are logged and recorded as parser warnings.
             reader = PdfReader(stream, strict=False)
             if reader.is_encrypted:
                 raise ValueError(
@@ -190,6 +207,7 @@ def extract_pdf(
 
 
 def _page_diagnostics(page: ExtractedPage) -> dict[str, object]:
+    """Return the diagnostics stored for a page in both artifact files."""
     return {
         "page_number": page.page_number,
         "character_count": len(page.text),
@@ -204,6 +222,11 @@ def _page_diagnostics(page: ExtractedPage) -> dict[str, object]:
 def _extraction_settings(
     min_page_characters: int, extraction_mode: ExtractionMode
 ) -> dict[str, object]:
+    """Return the settings record that decides whether artifacts can be reused.
+
+    It includes the installed pypdf version, so upgrading the parser makes
+    existing artifacts ineligible for reuse rather than silently mixing output.
+    """
     return {
         "library": "pypdf",
         "version": pypdf.__version__,
@@ -214,6 +237,12 @@ def _extraction_settings(
 
 
 def _serialize(document: ExtractedDocument) -> tuple[bytes, JsonObject]:
+    """Return the exact ``pages.jsonl`` bytes and the report for a document.
+
+    Output is deterministic. ``load_extraction`` re-serializes loaded
+    artifacts and compares the results, so any format change must also bump
+    ``_SCHEMA_VERSION``.
+    """
     rows = [
         {
             "schema_version": _SCHEMA_VERSION,
@@ -271,6 +300,8 @@ def load_extraction(output_dir: Path) -> tuple[ExtractedDocument, JsonObject]:
         ):
             raise ValueError("artifact files must not be symlinks")
         report = json.loads((output_dir / "report.json").read_bytes())
+        # type() rather than isinstance(): bool is a subclass of int, and
+        # true/false must not pass as numbers here.
         if (
             type(report["schema_version"]) is not int
             or report["schema_version"] != _SCHEMA_VERSION
@@ -326,6 +357,8 @@ def load_extraction(output_dir: Path) -> tuple[ExtractedDocument, JsonObject]:
             extraction_mode=settings["mode"],
         )
         expected_raw, expected_report = _serialize(document)
+        # Compare against the recorded settings, which may name an older pypdf
+        # version than the one installed now.
         expected_report["extraction"] = settings
         if expected_raw != raw or expected_report != report:
             raise ValueError("page diagnostics or report are inconsistent")
@@ -342,6 +375,16 @@ def _load_existing_extraction(
     min_page_characters: int,
     extraction_mode: ExtractionMode,
 ) -> JsonObject | None:
+    """Return the report of reusable artifacts, or None if none exist yet.
+
+    Reuse requires verified artifacts, identical extraction settings, and the
+    same source bytes and basename. The PDF is read for its fingerprint but
+    never parsed.
+
+    Raises:
+        FileExistsError: The destination exists but cannot be reused; its
+            files are left untouched.
+    """
     if output_dir.is_symlink():
         raise ValueError("The output directory must not be a symlink.")
     if not output_dir.exists():

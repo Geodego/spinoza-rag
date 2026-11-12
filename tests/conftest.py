@@ -45,7 +45,11 @@ def make_embedder():
 
 @pytest.fixture
 def snapshot():
-    """Capture a directory's file bytes, optionally with modification times."""
+    """Capture a directory's file bytes, optionally with modification times.
+
+    Comparing times as well detects files rewritten with identical bytes, which
+    a reuse path must not do.
+    """
 
     def capture(directory, *, with_mtime=False):
         return {

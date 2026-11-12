@@ -31,6 +31,12 @@ class OllamaClient:
         url: str = OLLAMA.url,
         timeout: float = OLLAMA.timeout_seconds,
     ) -> None:
+        """Validate the endpoint and timeout; nothing is contacted until a request.
+
+        Raises:
+            ValueError: The URL is not a plain HTTP loopback address, or the
+                timeout is not a positive finite number.
+        """
         parsed = urlsplit(url)
         if (
             parsed.scheme != "http"
@@ -48,11 +54,19 @@ class OllamaClient:
         if timeout <= 0 or not math.isfinite(timeout):
             raise ValueError("Ollama timeout must be positive and finite.")
         self.model, self.url, self.timeout = model, url.rstrip("/"), timeout
+        # An empty ProxyHandler ignores HTTP proxy environment variables, so
+        # requests to the loopback address cannot be routed off the machine.
         self._opener = build_opener(ProxyHandler({}))
 
     def _request(
         self, path: str, body: dict[str, object] | None = None
     ) -> dict[str, Any]:
+        """Return a JSON object from the Ollama API.
+
+        Raises:
+            ValueError: Any HTTP, connection, or response-format failure, with
+                an actionable message.
+        """
         data = json.dumps(body).encode() if body is not None else None
         request = Request(
             self.url + path, data=data, headers={"Content-Type": "application/json"}
@@ -99,7 +113,9 @@ class OllamaClient:
             {
                 "model": self.model,
                 "input": texts,
+                # Fail on overlong input rather than embed a truncated chunk.
                 "truncate": False,
+                # Keep the model loaded between batches of a long indexing run.
                 "keep_alive": "10m",
             },
         )

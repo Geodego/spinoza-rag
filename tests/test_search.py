@@ -94,6 +94,7 @@ def test_stale_upstream_pages_block_search(pipeline, make_embedder):
     (data.input / "pages.jsonl").write_text("damaged upstream")
     with pytest.raises(ValueError, match="checksum"):
         search("joie", data.index, embedder)
+    # Only the indexing call: the question was rejected before being embedded.
     assert len(embedder.calls) == 1
 
 

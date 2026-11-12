@@ -35,6 +35,12 @@ class IndexManifest(TypedDict):
 
 
 def _load_manifest(path: Path) -> IndexManifest:
+    """Return a fully validated index checkpoint.
+
+    Raises:
+        ValueError: Any field is missing or malformed, so callers never act
+            on a partial checkpoint.
+    """
     try:
         if path.is_symlink():
             raise ValueError("manifest must not be a symlink")
@@ -63,6 +69,7 @@ def _load_manifest(path: Path) -> IndexManifest:
 
 
 def _stored_dimensions(collection: Collection) -> int:
+    """Return the vector length stored in a nonempty collection."""
     embeddings = collection.get(limit=1, include=["embeddings"])["embeddings"]
     if embeddings is None:
         raise ValueError("Chroma returned no embeddings.")
@@ -72,6 +79,12 @@ def _stored_dimensions(collection: Collection) -> int:
 def _configuration(
     manifest: ChunkManifest, identity: dict[str, str], collection_name: str
 ) -> JsonObject:
+    """Return the index identity whose hash is the pipeline fingerprint.
+
+    It binds the exact chunk manifest, the installed model digest and Ollama
+    version, the collection name, the distance metric, and the query
+    instruction. Changing any of them makes an existing index incompatible.
+    """
     return {
         "schema_version": 1,
         "chunks_manifest_sha256": hashlib.sha256(json_bytes(manifest)).hexdigest(),
@@ -83,6 +96,7 @@ def _configuration(
 
 
 def _metadata(row: ChunkRow, source: JsonObject) -> dict[str, str | int]:
+    """Return the Chroma metadata for a chunk; verification compares it exactly."""
     metadata: dict[str, str | int] = {
         "document_id": row["document_id"],
         "source_file": row["source_file"],
@@ -104,6 +118,7 @@ def _metadata(row: ChunkRow, source: JsonObject) -> dict[str, str | int]:
 
 
 def _client(path: Path) -> Client:
+    """Open a persistent Chroma client with telemetry disabled; caller closes it."""
     client = chromadb.PersistentClient(
         path=str(path), settings=Settings(anonymized_telemetry=False)
     )
@@ -122,6 +137,22 @@ def _verify_collection(
     *,
     complete: bool,
 ) -> set[str]:
+    """Check that the collection holds only unmodified records for these chunks.
+
+    Args:
+        collection: The opened Chroma collection.
+        rows: The verified chunks the index must correspond to.
+        source: Source document metadata from the chunk manifest.
+        fingerprint: The expected pipeline fingerprint.
+        complete: Also require a stored record for every chunk.
+
+    Returns:
+        The IDs already stored, which a resumed run skips.
+
+    Raises:
+        ValueError: The collection belongs to another configuration, contains
+            unknown or modified records, or is incomplete when required.
+    """
     if (
         collection.metadata != {"pipeline_fingerprint": fingerprint}
         or (collection.configuration_json.get("hnsw") or {}).get("space") != "cosine"
@@ -206,6 +237,9 @@ def index_chunks(
         raise ValueError("Index checkpoint chunk count is inconsistent.")
     client = _client(index_dir / "chroma")
     try:
+        # Vectors always come from Ollama. Disabling Chroma's default embedding
+        # function keeps ONNX Runtime unused (see
+        # docs/knowledge/chroma-onnxruntime-intel-macos.md).
         collection = client.get_or_create_collection(
             collection_name,
             embedding_function=None,
@@ -245,6 +279,8 @@ def index_chunks(
             manifest["dimensions"] = dimensions
             # Lists are invariant, so copy into the element type Chroma declares.
             embeddings: PyEmbeddings = list(vectors)
+            # Store vectors before checkpointing. If the checkpoint write fails,
+            # the next run finds these IDs in Chroma and does not re-embed them.
             collection.upsert(
                 ids=[row["chunk_id"] for row in batch],
                 documents=[row["text"] for row in batch],

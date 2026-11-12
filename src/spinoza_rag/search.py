@@ -34,6 +34,8 @@ def search(
     if not question.strip() or top_k <= 0:
         raise ValueError("Question must not be empty and top_k must be positive.")
     with open_index(index_dir, embedder) as (collection, manifest):
+        # Qwen3 embedding models expect this instruction format for queries;
+        # documents are embedded without it.
         vectors = embedder.embed(
             [f"Instruct: {EMBEDDING.query_instruction}\nQuery: {question}"]
         )

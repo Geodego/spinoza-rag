@@ -249,6 +249,7 @@ def test_jsonl_report_match_and_identical_rerun_is_noop(make_pdf, tmp_path, snap
     assert report["pages"][1]["issues"] == ["empty_text"]
     assert report["extraction"]["library"] == "pypdf"
     assert report["extraction"]["normalization"] == "line_endings_only"
+    # Artifacts must stay portable: no machine-specific absolute paths.
     assert str(tmp_path) not in (output / "report.json").read_text()
 
 
@@ -335,6 +336,7 @@ def test_failed_publish_cleans_staging(make_pdf, tmp_path, monkeypatch):
 
 
 def test_cli_defaults_and_rerun(make_pdf, tmp_path):
+    """Run the module from tmp_path so its relative default paths resolve there."""
     (tmp_path / PATHS.source_pdf).parent.mkdir(parents=True)
     make_pdf([LONG_PAGE]).rename(tmp_path / PATHS.source_pdf)
     command = [sys.executable, "-I", "-m", "spinoza_rag.ingest"]
@@ -493,6 +495,11 @@ def _change_mode(case):
 def test_cli_refuses_outdated_cache_before_parsing_pdf(
     make_pdf, tmp_path, monkeypatch, snapshot, forbid_pdf_parsing, change
 ):
+    """Each change invalidates the cache; refusal must precede PDF parsing.
+
+    Rejecting before parsing guarantees a stale cache is never silently
+    refreshed, and the existing files stay byte-identical.
+    """
     source = make_pdf(["A synthetic original PDF document."])
     output = tmp_path / "results"
     command = [str(source), "--output-dir", str(output)]
@@ -591,6 +598,11 @@ def _edit_report(path, value):
 def test_cli_refuses_inconsistent_cache_without_reextracting_or_rewriting(
     make_pdf, tmp_path, snapshot, forbid_pdf_parsing, damage
 ):
+    """Damage that keeps the checksum valid must still fail deeper checks.
+
+    Several cases rewrite pages.jsonl with a matching checksum, so only the
+    provenance, sequence, and consistency checks can catch them.
+    """
     source = make_pdf(["A synthetic document for integrity checks."])
     output = tmp_path / "results"
     command = [str(source), "--output-dir", str(output)]
