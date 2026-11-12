@@ -24,7 +24,8 @@ def test_page_chunks_are_stable_bounded_and_do_not_read_pdf(
     rows, manifest = chunk_pages(
         data.input, data.chunks, data.tokenizer, ChunkConfig(35, 7)
     )
-    assert rows == data.rows and manifest == data.manifest
+    assert rows == data.rows
+    assert manifest == data.manifest
     assert snapshot(data.chunks, with_mtime=True) == before
     # Recursive overlap must retain some preceding words at an ordinary boundary.
     assert any(
@@ -77,7 +78,7 @@ def test_normalization_only_removes_matching_edge_page_number():
     assert "123" in normalize_page("Le nombre 123 compte.", 2)
 
 
-@pytest.mark.parametrize("size,overlap", [(0, 0), (20, -1), (20, 20), (20, 21)])
+@pytest.mark.parametrize(("size", "overlap"), [(0, 0), (20, -1), (20, 20), (20, 21)])
 def test_invalid_chunk_limits_are_rejected(size, overlap):
     with pytest.raises(ValueError, match="max_tokens"):
         ChunkConfig(size, overlap)

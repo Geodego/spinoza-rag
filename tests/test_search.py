@@ -103,7 +103,7 @@ def test_missing_index_is_reported(tmp_path, make_embedder):
 
 
 @pytest.mark.parametrize(
-    "damage,message",
+    ("damage", "message"),
     [
         ("invalid_json", "Invalid index manifest"),
         ("wrong_type", "Invalid index manifest"),

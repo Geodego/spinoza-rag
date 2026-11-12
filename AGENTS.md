@@ -59,6 +59,8 @@ uv build --no-sources
   under importlib mode, tests cannot import helper modules without path hacks.
 - Keep one behavior per test, use `match=` with `pytest.raises`, and
   parametrize with named case functions or `ids=` instead of if/elif chains.
+  Ruff's PT rules enforce raises, assertion, and parametrize style; the
+  other conventions rely on review.
 - Test installed imports; do not add sys.path or PYTHONPATH workarounds.
 - Unit tests must run without Ollama, model downloads, or the real corpus.
 - Add synthetic behavior tests with features. Tests cover PDF ingestion, chunking,

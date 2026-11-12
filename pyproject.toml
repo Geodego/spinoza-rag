@@ -53,6 +53,7 @@ select = [
     "UP",  # Modern Python syntax
     "B",   # Common bug patterns
     "D",   # Docstring conventions
+    "PT",  # pytest style: precise raises, single assertions, parametrize names
 ]
 ignore = [
     "D104",  # Package __init__.py files may omit docstrings

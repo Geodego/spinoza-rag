@@ -43,7 +43,8 @@ def test_requests_are_batched_untruncated_and_normalized():
     fake_opener(client, respond)
     assert client.embed(["first", "second"]) == [[0.6, 0.8], [0.0, 1.0]]
     body = json.loads(requests[0].data)
-    assert body["input"] == ["first", "second"] and body["truncate"] is False
+    assert body["input"] == ["first", "second"]
+    assert body["truncate"] is False
     assert requests[0].full_url == f"{OLLAMA.url}/api/embed"
 
 

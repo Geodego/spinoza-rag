@@ -13,13 +13,15 @@ def test_documents_are_embedded_once_without_query_prefix(pipeline, make_embedde
     )
     embedder = make_embedder()
     first = index_chunks(data.chunks, data.index, embedder, batch_size=1)
-    assert first["embedded_this_run"] == 2 and first["dimensions"] == 2
+    assert first["embedded_this_run"] == 2
+    assert first["dimensions"] == 2
     assert all(
         not text.startswith("Instruct:") for batch in embedder.calls for text in batch
     )
     calls = len(embedder.calls)
     again = index_chunks(data.chunks, data.index, embedder, batch_size=1)
-    assert again["embedded_this_run"] == 0 and again["chunks"] == 2
+    assert again["embedded_this_run"] == 0
+    assert again["chunks"] == 2
     assert len(embedder.calls) == calls
 
 
@@ -29,7 +31,8 @@ def test_interrupted_index_resumes_only_missing_ids(pipeline, make_embedder):
         index_chunks(data.chunks, data.index, make_embedder(fail_after=1), batch_size=1)
     resumed = make_embedder()
     result = index_chunks(data.chunks, data.index, resumed, batch_size=1)
-    assert result["reused"] == 1 and result["embedded_this_run"] == 2
+    assert result["reused"] == 1
+    assert result["embedded_this_run"] == 2
     assert all(data.rows[0]["text"] not in batch for batch in resumed.calls)
 
 
@@ -52,7 +55,8 @@ def test_upsert_before_checkpoint_failure_does_not_reembed(
     monkeypatch.undo()
     resumed = make_embedder()
     result = index_chunks(data.chunks, data.index, resumed)
-    assert result["embedded_this_run"] == 0 and result["dimensions"] == 2
+    assert result["embedded_this_run"] == 0
+    assert result["dimensions"] == 2
     assert resumed.calls == []
     assert search("joie", data.index, resumed, top_k=1)
 
