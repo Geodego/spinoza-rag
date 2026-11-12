@@ -53,6 +53,12 @@ Each stage is a separate command that reads the previous stage's persisted
 artifacts. Search reopens the index and embeds only the question; it never
 reprocesses the PDF or recomputes document embeddings.
 
+In answer mode, retrieval is the agent's only tool: the chat model calls
+`search_spinoza` through tool calling (function calling), chooses its own
+queries, and may search at most twice. The tool is an in-process Python
+function over the same search path. No Model Context Protocol (MCP) server or
+client is involved; see the [agent workflow](docs/agent-workflow.md).
+
 Key design decisions:
 
 - **Page provenance is preserved end to end.** The document ID is the SHA-256
@@ -191,8 +197,8 @@ deferred. Their hypotheses and criteria for resuming are recorded in
 [later improvements](docs/future-improvements.md).
 
 Use the [local research CLI](docs/research-agent.md) for context-only retrieval
-or agent answers. A web interface, multi-agent system and persistent memory
-remain out of scope.
+or agent answers. A web interface, multi-agent system, persistent memory and
+MCP integration remain out of scope.
 
 ## Technology
 
