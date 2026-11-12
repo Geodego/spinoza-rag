@@ -107,22 +107,23 @@ generated answers, and execution traces there. Nothing is saved by default;
 terminal scrollback and shell redirection remain the user's local responsibility.
 Tracked documentation contains questions and metadata, never corpus quotations.
 
-## Interview explanation
+## Design tradeoffs
 
-Start with the separation of concerns: ingestion is offline; validated retrieval
-is deterministic for a fixed index and embedding response; generation is a fresh,
-bounded decision loop over that same retrieval API. Explain that the agent can
-rephrase a query or request a second topic, while Python enforces budgets and
-source identity independently of prompt compliance. Show `context` first to make
-the evidence inspectable, then `answer` and its tool/timing events.
+Offline ingestion, validated retrieval, and answer generation have separate
+responsibilities. Retrieval uses a fixed index and an embedding response;
+generation runs a fresh, bounded decision loop over that retrieval API. The
+agent can rephrase a query or request a second topic, while Python enforces
+budgets and source identity independently of prompt compliance. Context mode
+makes the evidence inspectable before generation; answer mode includes source
+mappings and execution events alongside the response.
 
-Describe the tradeoffs: a small evidence budget and page-boundary chunks can omit
-an argument's continuation; a second search costs another model round trip and
-may only find duplicates. Citation resolution is cheap and testable, while
-semantic faithfulness needs source review. The retrieval evaluation remains a
-separate frozen experiment; informal answer demonstrations cannot improve its
-scores or establish answer quality. Discuss adjacent-page context and reranking
-as deferred, measurable experiments, not features already implemented.
+A small evidence budget and page-boundary chunks can omit an argument's
+continuation. A second search costs another model round trip and may return
+only duplicates. Citation resolution is cheap and testable, while semantic
+faithfulness needs source review. Retrieval evaluation remains a separate
+frozen experiment: informal answer checks cannot improve its scores or
+establish answer quality. Adjacent-page context and reranking remain deferred
+experiments with their own evaluation requirements.
 
 ## API references
 

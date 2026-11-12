@@ -5,8 +5,8 @@
 spinoza-rag is a fully local RAG application for Deleuze's lectures on Spinoza.
 See README.md for the overview, quickstart, and current status, and
 docs/README.md for detailed design, configuration, and development pages.
-This is a personal learning and portfolio project: prioritize technical substance
-and measured tradeoffs over new tools, contributor processes, or releases.
+Prioritize correctness, reproducibility, and measured tradeoffs over additional
+tools, contributor processes, or releases.
 
 - Keep PDF extraction separate from chunking and indexing, and offline ingestion
   separate from question answering.

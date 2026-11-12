@@ -164,7 +164,7 @@ instead of silently labelling those drafts grounded. Adjacent-page expansion,
 reranking and retrieval/evaluation changes remain deferred. The frozen gold set
 and official retrieval baseline were not modified or rerun for these demos.
 
-For an interview walkthrough, use the architecture and tradeoff explanation in
-[the agent guide](research-agent.md#interview-explanation), then show the actual
-local evidence and timing events. Explain the unsupported synthesis as a
-measured limitation of this bounded prototype, not a solved grounding problem.
+See [the design tradeoffs](research-agent.md#design-tradeoffs) for the
+architectural constraints behind these results. Local evidence and timing events
+support inspection of individual runs; unsupported synthesis remains an observed
+limitation of answer generation.
