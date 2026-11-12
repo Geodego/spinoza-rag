@@ -98,6 +98,7 @@ git clone https://github.com/Geodego/spinoza-rag.git
 cd spinoza-rag
 uv sync --locked
 ollama pull qwen3-embedding:0.6b
+ollama pull qwen3:8b  # Required for answer mode
 mkdir -p models
 curl --fail --location \
   https://huggingface.co/Qwen/Qwen3-Embedding-0.6B/resolve/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/tokenizer.json \
@@ -107,7 +108,7 @@ shasum -a 256 models/qwen3-embedding-tokenizer.json
 
 The tokenizer SHA-256 must be
 `def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a`.
-Setup downloads packages, model, and tokenizer once; later commands never
+Setup downloads packages, models, and tokenizer once; later commands never
 download models or call hosted APIs.
 
 ### Run the pipeline
@@ -123,6 +124,17 @@ uv run --locked python -m spinoza_rag.search \
 Each stage's default output is the next stage's default input. Every command
 accepts `--help`, and `python -m spinoza_rag.config` prints all defaults. Rerunning
 a stage with unchanged inputs verifies and reuses its artifacts.
+
+With the index ready, inspect evidence or request an answer:
+
+```sh
+uv run --locked python -m spinoza_rag.research context \
+  'Selon les passages, quels éléments composent le premier genre de connaissance ? Limite la réponse à cette définition.' --top-k 1
+uv run --locked python -m spinoza_rag.research answer \
+  'Selon les passages, quels éléments composent le premier genre de connaissance ? Limite la réponse à cette définition.' --top-k 1 --timeout 600
+```
+
+See [the agent guide](docs/research-agent.md) for output examples and failure handling.
 
 ## Results
 
