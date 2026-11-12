@@ -40,8 +40,12 @@ flowchart LR
 
 Each invocation creates a fresh graph without a checkpointer or store. There
 is one tool, no multi-agent system, no persistent conversation, and no web
-interface. Python enforces the budgets and source identity independently of
-whether the model follows its instructions.
+interface. Retrieval is that tool: `search_spinoza` is an in-process Python
+function, declared with LangChain's `@tool` decorator and reached by the model
+through Ollama tool calling. It is not served over the Model Context Protocol
+(MCP), and the application contains no MCP server or client. Python enforces
+the budgets and source identity independently of whether the model follows its
+instructions.
 
 ## An answer run, step by step
 
