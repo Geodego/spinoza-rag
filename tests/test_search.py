@@ -130,3 +130,15 @@ def test_bad_index_manifest_fails_before_query_embedding(
     with pytest.raises(ValueError, match=message):
         search("joie", data.index, embedder)
     assert embedder.calls == []
+
+
+def test_open_collection_query_matches_standalone_search(pipeline, make_embedder):
+    from spinoza_rag.search import search_collection
+
+    data = pipeline(TWO_PAGES)
+    index_chunks(data.chunks, data.index, make_embedder())
+    with open_index(data.index, make_embedder()) as (collection, manifest):
+        results = search_collection(
+            "Quelle joie ?", collection, manifest, make_embedder(), top_k=2
+        )
+    assert results == search("Quelle joie ?", data.index, make_embedder(), top_k=2)

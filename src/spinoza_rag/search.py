@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import TypedDict
 
 import chromadb
+from chromadb.api.models.Collection import Collection
 from chromadb.api.types import Metadata, PyEmbeddings
 
 from spinoza_rag.config import EMBEDDING, OLLAMA, PATHS, SEARCH
 from spinoza_rag.embeddings import Embedder, OllamaClient
-from spinoza_rag.index import open_index
+from spinoza_rag.index import IndexManifest, open_index
 
 
 class SearchResult(TypedDict):
@@ -34,47 +35,64 @@ def search(
     if not question.strip() or top_k <= 0:
         raise ValueError("Question must not be empty and top_k must be positive.")
     with open_index(index_dir, embedder) as (collection, manifest):
-        # Qwen3 embedding models expect this instruction format for queries;
-        # documents are embedded without it.
-        vectors = embedder.embed(
-            [f"Instruct: {EMBEDDING.query_instruction}\nQuery: {question}"]
+        return search_collection(question, collection, manifest, embedder, top_k=top_k)
+
+
+def search_collection(
+    question: str,
+    collection: Collection,
+    manifest: IndexManifest,
+    embedder: Embedder,
+    *,
+    top_k: int = SEARCH.top_k,
+) -> list[SearchResult]:
+    """Query an already verified collection, embedding only the question.
+
+    The caller must keep an ``open_index`` context active for this collection
+    and manifest. This lets batch evaluation verify one snapshot once while
+    sharing exactly the same query path as the single-question search CLI.
+    """
+    if not question.strip() or top_k <= 0:
+        raise ValueError("Question must not be empty and top_k must be positive.")
+    # Qwen3 embedding models expect this instruction format for queries;
+    # documents are embedded without it.
+    vectors = embedder.embed(
+        [f"Instruct: {EMBEDDING.query_instruction}\nQuery: {question}"]
+    )
+    if (
+        len(vectors) != 1
+        or len(vectors[0]) != manifest["dimensions"]
+        or not all(math.isfinite(value) for value in vectors[0])
+        or not any(vectors[0])
+    ):
+        raise ValueError("Query embedding dimensions/values do not match the index.")
+    # Lists are invariant, so copy into the element type Chroma declares.
+    query: PyEmbeddings = list(vectors)
+    result = collection.query(
+        query_embeddings=query,
+        n_results=min(top_k, collection.count()),
+        include=["documents", "metadatas", "distances"],
+    )
+    documents = result["documents"]
+    metadatas = result["metadatas"]
+    distances = result["distances"]
+    if documents is None or metadatas is None or distances is None:
+        raise ValueError("Chroma returned no documents, metadata, or distances.")
+    return [
+        {
+            "chunk_id": identifier,
+            "text": text,
+            "metadata": metadata,
+            "distance": distance,
+        }
+        for identifier, text, metadata, distance in zip(
+            result["ids"][0],
+            documents[0],
+            metadatas[0],
+            distances[0],
+            strict=True,
         )
-        if (
-            len(vectors) != 1
-            or len(vectors[0]) != manifest["dimensions"]
-            or not all(math.isfinite(value) for value in vectors[0])
-            or not any(vectors[0])
-        ):
-            raise ValueError(
-                "Query embedding dimensions/values do not match the index."
-            )
-        # Lists are invariant, so copy into the element type Chroma declares.
-        query: PyEmbeddings = list(vectors)
-        result = collection.query(
-            query_embeddings=query,
-            n_results=min(top_k, collection.count()),
-            include=["documents", "metadatas", "distances"],
-        )
-        documents = result["documents"]
-        metadatas = result["metadatas"]
-        distances = result["distances"]
-        if documents is None or metadatas is None or distances is None:
-            raise ValueError("Chroma returned no documents, metadata, or distances.")
-        return [
-            {
-                "chunk_id": identifier,
-                "text": text,
-                "metadata": metadata,
-                "distance": distance,
-            }
-            for identifier, text, metadata, distance in zip(
-                result["ids"][0],
-                documents[0],
-                metadatas[0],
-                distances[0],
-                strict=True,
-            )
-        ]
+    ]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
