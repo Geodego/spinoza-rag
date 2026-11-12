@@ -7,11 +7,29 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=no]
       - id: check-added-large-files
         args: [--maxkb=1024, --enforce-all]
 
   - repo: local
     hooks:
+      # Check-only replacements for the built-in whitespace fixers, which
+      # rewrite files. Markdown may keep trailing spaces as hard line breaks.
+      - id: trailing-whitespace
+        name: Check trailing whitespace
+        entry: '[ \t]+$'
+        language: pygrep
+        types: [text]
+        exclude: \.md$
+
+      - id: final-newline
+        name: Check single final newline
+        entry: '[^\n]\Z|\n\n\Z'
+        args: [--multiline]
+        language: pygrep
+        types: [text]
+
       - id: conventional-commits
         name: Validate commit message
         entry: uv run --locked cz check --message-length-limit 72 --commit-msg-file

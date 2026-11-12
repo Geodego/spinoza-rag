@@ -36,7 +36,9 @@ message_length_limit = 72
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["--import-mode=importlib", "--strict-config", "--strict-markers", "-ra"]
+addopts = ["--import-mode=importlib", "-ra"]
+# Strict config, markers, xfail, and parametrize IDs.
+strict = true
 filterwarnings = ["error"]
 
 [tool.ruff]
@@ -57,12 +59,15 @@ select = [
     "D401",  # Imperative summary lines; the google convention disables it
     "ERA",  # No commented-out code
     "PT",  # pytest style: precise raises, single assertions, parametrize names
+    "RUF",  # Ruff-specific: unused noqa, mutable defaults, ambiguous characters
 ]
 ignore = [
     "D104",  # Package __init__.py files may omit docstrings
     "D107",  # Do not require __init__ method docstrings
     "D417",  # Do not repeat every argument in docstrings
 ]
+# The en dash is intentional typography in page ranges and French text.
+allowed-confusables = ["–"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

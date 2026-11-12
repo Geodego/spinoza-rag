@@ -1,3 +1,5 @@
+from itertools import pairwise
+
 import pytest
 
 from spinoza_rag.chunk import chunk_pages, load_chunks, normalize_page
@@ -30,7 +32,7 @@ def test_page_chunks_are_stable_bounded_and_do_not_read_pdf(
     # Recursive overlap must retain some preceding words at an ordinary boundary.
     assert any(
         set(a["text"].split()[-7:]) & set(b["text"].split()[:7])
-        for a, b in zip(rows, rows[1:], strict=False)
+        for a, b in pairwise(rows)
         if a["page_start"] == b["page_start"]
     )
 
@@ -39,7 +41,7 @@ def test_overlap_repeats_unique_boundary_tokens(pipeline):
     data = pipeline([" ".join(f"mot{i}" for i in range(75))], config=ChunkConfig(20, 5))
     words = [row["text"].split() for row in data.rows]
     assert len(words) > 2
-    assert all(a[-5:] == b[:5] for a, b in zip(words, words[1:], strict=False))
+    assert all(a[-5:] == b[:5] for a, b in pairwise(words))
 
 
 def test_lecture_boundaries_inside_pages_are_not_misattributed(pipeline):
