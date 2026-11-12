@@ -34,6 +34,7 @@ class Paths:
     index_dir: Path = Path("storage/index")
     gold_set: Path = Path("evaluation/gold.v1.json")
     evaluation_dir: Path = Path("storage/evaluations/baseline")
+    research_dir: Path = Path("storage/research")
     tokenizer: Path = Path("models/qwen3-embedding-tokenizer.json")
 
 
@@ -113,6 +114,22 @@ class EvaluationSettings:
     chunk_limit: int = 50
 
 
+@dataclass(frozen=True)
+class AgentSettings:
+    """Bound local research runs independently of model instructions."""
+
+    model: str = "qwen3:8b"
+    max_search_calls: int = 2
+    max_model_calls: int = 3
+    context_bytes: int = 8000
+    question_bytes: int = 2000
+    query_bytes: int = 1000
+    num_ctx: int = 16384
+    num_predict: int = 700
+    temperature: float = 0
+
+
+AGENT = AgentSettings()
 PATHS = Paths()
 EXTRACTION = ExtractionSettings()
 CHUNKING = ChunkConfig()
@@ -134,6 +151,7 @@ def defaults() -> dict[str, dict[str, object]]:
         "index": INDEX,
         "search": SEARCH,
         "evaluation": EVALUATION,
+        "agent": AGENT,
     }
     return {
         name: {

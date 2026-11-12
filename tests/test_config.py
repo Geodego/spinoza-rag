@@ -137,6 +137,7 @@ def test_config_module_prints_all_defaults():
         "index",
         "search",
         "evaluation",
+        "agent",
     }
     assert printed["paths"]["pages_dir"] == str(PATHS.pages_dir)
     assert printed["chunking"]["max_tokens"] == CHUNKING.max_tokens
