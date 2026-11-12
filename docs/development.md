@@ -69,6 +69,13 @@ and real local Chroma persistence. Tests run without the corpus, Ollama, or
 model downloads, and use small synthetic fixtures with explicit page numbers
 and source identities.
 
+The `check-docs` prek hook runs `scripts/check_docs.py` whenever a Markdown file
+changes, and in CI through `prek run --all-files`. It scans every Markdown file,
+not only changed ones, because renaming a page breaks links in files that did
+not change. It fails on relative links whose target file or heading anchor is
+missing, and on a README longer than 250 lines. External URLs are not checked.
+Run it directly with `uv run --locked python scripts/check_docs.py`.
+
 ## Repository layout
 
 ```text
@@ -80,6 +87,7 @@ src/spinoza_rag/embeddings.py  Local Ollama HTTP client
 src/spinoza_rag/index.py       Resumable persistent Chroma indexing
 src/spinoza_rag/search.py      Retrieval-only CLI
 tests/                         Synthetic ingestion, indexing, and retrieval tests
+scripts/check_docs.py          Markdown link and README length check (prek hook)
 docs/                          Design, reference, and evaluation notes
 docs/knowledge/                Engineering lessons and compatibility notes, indexed
 AGENTS.md                      Shared coding-agent guidance

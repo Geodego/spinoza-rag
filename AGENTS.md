@@ -151,6 +151,29 @@ Tests:
   side effect proves the goal.
 - Give shared fixtures in conftest.py a docstring; `pytest --fixtures` shows it.
 
+## Documentation
+
+README.md is the entry point for visitors; docs/ holds the detail, indexed by
+docs/README.md. `scripts/check_docs.py` (a prek hook) fails on broken relative
+links or anchors and on a README longer than 250 lines.
+
+- Keep README.md to: what and why, a real example, quickstart, results and
+  limitations, status and roadmap, development summary, and licensing. Put
+  detail in a docs/ page, link to it, and list new pages in docs/README.md.
+- State each fact once and link to it elsewhere. Design and reference go in
+  docs/<area>.md, measurements in docs/evaluation.md, toolchain and
+  machine-specific setup in docs/development.md, and resolved compatibility
+  problems in docs/knowledge/.
+- Update docs in the same change as the behavior, CLI flag, default, check, or
+  dependency they describe. Search README.md and docs/ for the old name or
+  value.
+- Report measurements with how, where, and when they were obtained. Label
+  informal checks as informal, and never describe planned work as implemented.
+- Never quote corpus text in docs or examples; show citation metadata and
+  replace passages with a placeholder.
+- Use relative links, and write commands that run from the repository root
+  with `uv run --locked`.
+
 ## Git and commit conventions
 
 - Only create commits when explicitly requested.

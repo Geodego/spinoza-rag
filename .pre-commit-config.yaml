@@ -52,6 +52,14 @@ repos:
         files: (\.pyi?$|\.ipynb$|(^|/)(pyproject|ruff)\.toml$)
         require_serial: true
 
+      - id: check-docs
+        name: Check Markdown links and README length
+        entry: uv run --locked python -I scripts/check_docs.py
+        language: system
+        # A renamed page breaks links in unchanged files, so scan them all.
+        pass_filenames: false
+        files: \.md$
+
       - id: mypy
         name: mypy
         entry: uv run --locked mypy
