@@ -2,27 +2,30 @@
 
 import argparse
 import math
+from collections.abc import Sequence
 from pathlib import Path
 
 import chromadb
 
-from spinoza_rag.embeddings import (
-    DEFAULT_MODEL,
-    QUERY_INSTRUCTION,
-    Embedder,
-    OllamaClient,
-)
+from spinoza_rag.config import EMBEDDING, OLLAMA, PATHS, SEARCH
+from spinoza_rag.embeddings import Embedder, OllamaClient
 from spinoza_rag.index import open_index
 
 
 def search(
-    question: str, index_dir: Path, embedder: Embedder, *, top_k: int = 5
+    question: str,
+    index_dir: Path,
+    embedder: Embedder,
+    *,
+    top_k: int = SEARCH.top_k,
 ) -> list[dict]:
     """Embed only the question and return nearest passages with source metadata."""
     if not question.strip() or top_k <= 0:
         raise ValueError("Question must not be empty and top_k must be positive.")
     with open_index(index_dir, embedder) as (collection, manifest):
-        vectors = embedder.embed([f"Instruct: {QUERY_INSTRUCTION}\nQuery: {question}"])
+        vectors = embedder.embed(
+            [f"Instruct: {EMBEDDING.query_instruction}\nQuery: {question}"]
+        )
         if (
             len(vectors) != 1
             or len(vectors[0]) != manifest["dimensions"]
@@ -54,16 +57,32 @@ def search(
         ]
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Print retrieved passages and physical PDF page references."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("question")
-    parser.add_argument("--index-dir", type=Path, default=Path("storage/index"))
-    parser.add_argument("--top-k", type=int, default=5)
-    parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--ollama-url", default="http://127.0.0.1:11434")
-    parser.add_argument("--timeout", type=float, default=180)
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("question", help="question to embed and search for")
+    parser.add_argument(
+        "--index-dir",
+        type=Path,
+        default=PATHS.index_dir,
+        help="complete persisted index",
+    )
+    parser.add_argument(
+        "--top-k", type=int, default=SEARCH.top_k, help="number of passages to return"
+    )
+    parser.add_argument(
+        "--model", default=EMBEDDING.model, help="installed Ollama embedding model"
+    )
+    parser.add_argument("--ollama-url", default=OLLAMA.url, help="loopback Ollama URL")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=OLLAMA.timeout_seconds,
+        help="seconds per Ollama request",
+    )
+    args = parser.parse_args(argv)
     try:
         results = search(
             args.question,

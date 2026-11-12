@@ -7,8 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 
-DEFAULT_MODEL = "qwen3-embedding:0.6b"
-QUERY_INSTRUCTION = "Given a question about Deleuze's lectures on Spinoza, retrieve relevant lecture passages that answer the question."
+from spinoza_rag.config import EMBEDDING, OLLAMA
 
 
 class Embedder(Protocol):
@@ -28,9 +27,9 @@ class OllamaClient:
 
     def __init__(
         self,
-        model: str = DEFAULT_MODEL,
-        url: str = "http://127.0.0.1:11434",
-        timeout: float = 180,
+        model: str = EMBEDDING.model,
+        url: str = OLLAMA.url,
+        timeout: float = OLLAMA.timeout_seconds,
     ) -> None:
         parsed = urlsplit(url)
         if (

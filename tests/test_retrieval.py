@@ -12,8 +12,9 @@ from tokenizers.models import WordLevel
 from tokenizers.pre_tokenizers import Whitespace
 
 from spinoza_rag.artifacts import json_bytes
-from spinoza_rag.chunk import ChunkConfig, chunk_pages, load_chunks, normalize_page
-from spinoza_rag.embeddings import QUERY_INSTRUCTION, OllamaClient
+from spinoza_rag.chunk import chunk_pages, load_chunks, normalize_page
+from spinoza_rag.config import EMBEDDING, ChunkConfig
+from spinoza_rag.embeddings import OllamaClient
 from spinoza_rag.index import index_chunks, open_index
 from spinoza_rag.ingest import ExtractedDocument, ExtractedPage, write_extraction
 from spinoza_rag.search import search
@@ -193,7 +194,7 @@ def test_index_reuse_and_query_embed_only_the_question(pipeline):
     results = search("Quelle est la joie ?", data.index, embedder, top_k=1)
     assert len(embedder.calls) == calls + 1
     assert embedder.calls[-1] == [
-        f"Instruct: {QUERY_INSTRUCTION}\nQuery: Quelle est la joie ?"
+        f"Instruct: {EMBEDDING.query_instruction}\nQuery: Quelle est la joie ?"
     ]
     assert results[0]["metadata"]["page_start"] == 1
     assert results[0]["metadata"]["source_file"] == "synthetic.pdf"

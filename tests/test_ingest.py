@@ -15,6 +15,7 @@ from pypdf.generic import (
     NumberObject,
 )
 
+from spinoza_rag.config import EXTRACTION, PATHS
 from spinoza_rag.ingest import extract_pdf, main, write_extraction
 
 
@@ -305,9 +306,10 @@ def test_cli_defaults_and_rerun(make_pdf, tmp_path):
             command, cwd=tmp_path, text=True, capture_output=True, check=False
         )
         assert result.returncode == 0, result.stderr
-    pages, report = read_artifacts(tmp_path / "storage/ingestion")
+    pages, report = read_artifacts(tmp_path / PATHS.pages_dir)
     assert len(pages) == 1
     assert report["summary"]["total_pages"] == 1
+    assert report["extraction"]["mode"] == EXTRACTION.mode
     assert PdfReader(tmp_path / "data/spinoza.pdf").pages
 
 
@@ -458,7 +460,8 @@ def test_cli_refuses_outdated_cache_before_parsing_pdf(
     elif change == "threshold":
         command.extend(["--min-page-characters", "0"])
     elif change == "mode":
-        command.extend(["--extraction-mode", "layout"])
+        other = "plain" if EXTRACTION.mode == "layout" else "layout"
+        command.extend(["--extraction-mode", other])
     elif change == "version":
         monkeypatch.setattr("spinoza_rag.ingest.pypdf.__version__", "next-test-version")
     else:

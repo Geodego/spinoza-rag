@@ -5,7 +5,8 @@ import hashlib
 import json
 import os
 import re
-from dataclasses import asdict, dataclass
+from collections.abc import Sequence
+from dataclasses import asdict
 from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
@@ -14,22 +15,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from tokenizers import Tokenizer
 
 from spinoza_rag.artifacts import json_bytes, jsonl_bytes, publish_artifacts
+from spinoza_rag.config import CHUNKING, PATHS, ChunkConfig
 from spinoza_rag.ingest import load_extraction
-
-
-@dataclass(frozen=True)
-class ChunkConfig:
-    """Token limits; overlap is a target constrained by recursive separators."""
-
-    max_tokens: int = 450
-    overlap_tokens: int = 70
-
-    def __post_init__(self) -> None:
-        """Reject invalid token limits before processing input."""
-        if self.max_tokens <= 0 or not 0 <= self.overlap_tokens < self.max_tokens:
-            raise ValueError(
-                "Require max_tokens > 0 and 0 <= overlap_tokens < max_tokens."
-            )
 
 
 def normalize_page(text: str, page_number: int) -> str:
@@ -142,7 +129,7 @@ def chunk_pages(
     store is used. Failed extraction pages block chunking; empty pages are skipped.
     Lecture dates are inferred from standalone headings and carried across pages.
     """
-    config = config or ChunkConfig()
+    config = config or CHUNKING
     document, extraction = load_extraction(input_dir)
     if any(page.error for page in document.pages):
         raise ValueError(
@@ -228,19 +215,42 @@ def chunk_pages(
     return rows, manifest
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Persist chunks from existing page JSONL with a local tokenizer file."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--input-dir", type=Path, default=Path("storage/ingestion-layout")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument("--output-dir", type=Path, default=Path("storage/chunks"))
     parser.add_argument(
-        "--tokenizer", type=Path, default=Path("models/qwen3-embedding-tokenizer.json")
+        "--input-dir",
+        type=Path,
+        default=PATHS.pages_dir,
+        help="extracted page artifacts",
     )
-    parser.add_argument("--chunk-tokens", type=int, default=450)
-    parser.add_argument("--overlap-tokens", type=int, default=70)
-    args = parser.parse_args()
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=PATHS.chunks_dir,
+        help="new or matching chunk directory",
+    )
+    parser.add_argument(
+        "--tokenizer",
+        type=Path,
+        default=PATHS.tokenizer,
+        help="local Qwen tokenizer.json",
+    )
+    parser.add_argument(
+        "--chunk-tokens",
+        type=int,
+        default=CHUNKING.max_tokens,
+        help="maximum tokens per chunk",
+    )
+    parser.add_argument(
+        "--overlap-tokens",
+        type=int,
+        default=CHUNKING.overlap_tokens,
+        help="overlap target in tokens",
+    )
+    args = parser.parse_args(argv)
     try:
         rows, _ = chunk_pages(
             args.input_dir,

@@ -6,7 +6,7 @@ import json
 import math
 import os
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -16,12 +16,8 @@ from chromadb.config import Settings
 
 from spinoza_rag.artifacts import json_bytes, save_json
 from spinoza_rag.chunk import load_chunks
-from spinoza_rag.embeddings import (
-    DEFAULT_MODEL,
-    QUERY_INSTRUCTION,
-    Embedder,
-    OllamaClient,
-)
+from spinoza_rag.config import EMBEDDING, INDEX, OLLAMA, PATHS
+from spinoza_rag.embeddings import Embedder, OllamaClient
 
 
 def _load_manifest(path: Path) -> dict:
@@ -62,7 +58,7 @@ def _configuration(manifest: dict, identity: dict, collection_name: str) -> dict
         "embedding": identity,
         "collection": collection_name,
         "distance": "cosine",
-        "query_instruction": QUERY_INSTRUCTION,
+        "query_instruction": EMBEDDING.query_instruction,
     }
 
 
@@ -129,8 +125,8 @@ def index_chunks(
     index_dir: Path,
     embedder: Embedder,
     *,
-    collection_name: str = "spinoza",
-    batch_size: int = 8,
+    collection_name: str = INDEX.collection,
+    batch_size: int = INDEX.batch_size,
     progress: Callable[[str], None] | None = None,
 ) -> dict:
     """Index missing chunk IDs, checkpoint each batch, and never re-embed saved IDs.
@@ -286,17 +282,43 @@ def open_index(
         client.close()
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Build or resume an index from saved chunks using local Ollama embeddings."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--chunks-dir", type=Path, default=Path("storage/chunks"))
-    parser.add_argument("--index-dir", type=Path, default=Path("storage/index"))
-    parser.add_argument("--collection", default="spinoza")
-    parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--ollama-url", default="http://127.0.0.1:11434")
-    parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--timeout", type=float, default=180)
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--chunks-dir",
+        type=Path,
+        default=PATHS.chunks_dir,
+        help="persisted chunk artifacts",
+    )
+    parser.add_argument(
+        "--index-dir",
+        type=Path,
+        default=PATHS.index_dir,
+        help="new or resumable index directory",
+    )
+    parser.add_argument(
+        "--collection", default=INDEX.collection, help="Chroma collection name"
+    )
+    parser.add_argument(
+        "--model", default=EMBEDDING.model, help="installed Ollama embedding model"
+    )
+    parser.add_argument("--ollama-url", default=OLLAMA.url, help="loopback Ollama URL")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=INDEX.batch_size,
+        help="chunks per embedding request",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=OLLAMA.timeout_seconds,
+        help="seconds per Ollama request",
+    )
+    args = parser.parse_args(argv)
     started = time.perf_counter()
     try:
         result = index_chunks(

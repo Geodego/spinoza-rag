@@ -102,6 +102,7 @@ local Chroma persistence. Tests run without the corpus, Ollama, or model downloa
 
 ```text
 src/spinoza_rag/          Installable application package
+src/spinoza_rag/config.py Central defaults: paths, models, and stage settings
 src/spinoza_rag/ingest.py PDF extraction and verified artifact loading
 src/spinoza_rag/chunk.py Token-aware persistent chunking
 src/spinoza_rag/embeddings.py Local Ollama HTTP client
@@ -132,7 +133,8 @@ uv run --locked python -m spinoza_rag.ingest
 No corpus is bundled. If `data/spinoza.pdf` is absent, the command reports the
 missing file without publishing output. Tests generate their own synthetic PDFs.
 
-The default destination is `storage/ingestion/`, containing:
+The default uses layout mode and writes to `storage/ingestion-layout/`, the
+chunking stage's default input. The destination contains:
 
 - `pages.jsonl`: one UTF-8 JSON object per physical PDF page, including empty or
   failed pages. Each has `schema_version`, `document_id`, `source_file`,
@@ -199,20 +201,19 @@ uv run --locked python -m spinoza_rag.ingest data/spinoza.pdf \
 Use `--min-page-characters 0` to disable only the short-text heuristic. This is a
 sequential local component; concurrent writers are outside its scope.
 
-For the locally provided lecture PDF, use layout mode in a separate destination:
-
-```sh
-uv run --locked python -m spinoza_rag.ingest data/spinoza.pdf \
-  --extraction-mode layout --output-dir storage/ingestion-layout
-```
-
 The first plain-mode run extracted 531 pages without empty pages or parser
 errors, but spot checks found spaces inside words. Layout mode fixes those
 sampled word splits and orders page-number footers after the body text. It also
-adds layout whitespace. The default remains `plain` for reproducibility of the
-original run; mode selection is explicit and recorded in the report. The
-original plain output is preserved. No heuristic report replaces visual review
-of representative PDF passages and reading order.
+adds layout whitespace. Layout is therefore the default; the mode is recorded in
+the report. The original plain output is preserved and remains reproducible:
+
+```sh
+uv run --locked python -m spinoza_rag.ingest \
+  --extraction-mode plain --output-dir storage/ingestion
+```
+
+No heuristic report replaces visual review of representative PDF passages and
+reading order.
 
 ### Extraction Decisions and Limits
 
@@ -237,8 +238,8 @@ and extraction performance have not been systematically benchmarked.
 
 ## Persistent Chunking, Embeddings, and Search
 
-Use the previously extracted layout artifacts in `storage/ingestion-layout/`.
-The following stages do not open the original PDF. Keep the page artifacts and
+These stages read the layout artifacts in `storage/ingestion-layout/` by
+default. They do not open the original PDF. Keep the page artifacts and
 chunk artifacts alongside the index: their fingerprints are verified during
 indexing and search.
 
@@ -290,6 +291,7 @@ Default inputs and outputs:
 
 | Stage | Input | Persisted output |
 | --- | --- | --- |
+| Ingest | `data/spinoza.pdf` | `storage/ingestion-layout/pages.jsonl` and `report.json` |
 | Chunk | `storage/ingestion-layout/` and the local tokenizer | `storage/chunks/chunks.jsonl` and `manifest.json` |
 | Index | `storage/chunks/` | `storage/index/chroma/` and `manifest.json` |
 | Search | `storage/index/`, existing upstream artifacts, and a question | Printed passages; no document embedding generation |
@@ -376,9 +378,9 @@ committed immediately before a checkpoint failure is recovered without embedding
 it again. Search rejects incomplete indexes. Concurrent writers are outside this
 sequential baseline's scope.
 
-`--batch-size` defaults to 8. Both index and search accept `--timeout` (180 seconds
-by default) and `--ollama-url`; a missing model or unreachable service produces
-an actionable error. Schema/configuration changes are never automatically applied
+Index and search accept `--batch-size` (index only), `--timeout`, and
+`--ollama-url`; a missing model or unreachable service produces an actionable
+error. Schema/configuration changes are never automatically applied
 to old indexes. Keep the existing output and choose a new directory to rebuild.
 
 ### Current Local Corpus Observations
@@ -444,8 +446,29 @@ Keep source PDFs in `data/`, generated indexes and extraction output in
 `storage/`, and downloaded model files in `models/`. These directories are
 ignored, as are legacy `chroma/`, PDF files, and GGUF weights. Tests should use
 small synthetic fixtures with explicit page numbers and source identities.
-There are no application environment variables yet; add `.env.example` when
-configuration is implemented, documenting only settings the code consumes.
+### Configuration Defaults
+
+All defaults live in `src/spinoza_rag/config.py`, grouped by area: paths,
+extraction, chunking, Ollama, embedding, index, and search. Each stage's
+default output is the next stage's default input, so the stages chain without
+flags. Every CLI shows its effective defaults in `--help`; print them all with:
+
+```sh
+uv run --locked python -m spinoza_rag.config
+```
+
+CLI flags override defaults for one run. Library functions take explicit values
+and fall back to the same defaults. The defaults say what the next run will
+use; each artifact's manifest or report records what an existing run actually
+used. Several defaults enter configuration fingerprints: the extraction mode
+and short-page threshold, the chunk sizes, the embedding model and query
+instruction, and the collection name. Changing one makes existing artifacts
+incompatible, so the next run requires a new output directory. Schema and
+normalization revisions are code behavior, not settings, and stay in their
+modules.
+
+There are no environment variables or settings files; add one only when a
+concrete need appears, documenting only settings the code consumes.
 
 ## Project Status
 

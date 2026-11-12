@@ -13,13 +13,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Literal
 
 import pypdf
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
 from spinoza_rag.artifacts import publish_artifacts
+from spinoza_rag.config import EXTRACTION, PATHS, ExtractionMode
 
 # Bump when the output format or extraction behavior changes.
 _SCHEMA_VERSION = 1
@@ -66,7 +66,7 @@ class ExtractedDocument:
     pages: tuple[ExtractedPage, ...]
     parser_warnings: tuple[str, ...]
     min_page_characters: int
-    extraction_mode: Literal["plain", "layout"]
+    extraction_mode: ExtractionMode
 
 
 class _PdfWarnings(logging.Handler):
@@ -98,8 +98,8 @@ def _text_issues(text: str, min_page_characters: int) -> list[str]:
 def extract_pdf(
     source: Path,
     *,
-    min_page_characters: int = 40,
-    extraction_mode: Literal["plain", "layout"] = "plain",
+    min_page_characters: int = EXTRACTION.min_page_characters,
+    extraction_mode: ExtractionMode = EXTRACTION.mode,
 ) -> ExtractedDocument:
     """Extract a PDF snapshot without writing files or discarding problem pages.
 
@@ -202,7 +202,7 @@ def _page_diagnostics(page: ExtractedPage) -> dict[str, object]:
 
 
 def _extraction_settings(
-    min_page_characters: int, extraction_mode: Literal["plain", "layout"]
+    min_page_characters: int, extraction_mode: ExtractionMode
 ) -> dict[str, object]:
     return {
         "library": "pypdf",
@@ -340,7 +340,7 @@ def _load_existing_extraction(
     source: Path,
     output_dir: Path,
     min_page_characters: int,
-    extraction_mode: Literal["plain", "layout"],
+    extraction_mode: ExtractionMode,
 ) -> dict[str, object] | None:
     if output_dir.is_symlink():
         raise ValueError("The output directory must not be a symlink.")
@@ -404,25 +404,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         "source",
         nargs="?",
         type=Path,
-        default=Path("data/spinoza.pdf"),
+        default=PATHS.source_pdf,
         help="local PDF to extract",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("storage/ingestion"),
+        default=PATHS.pages_dir,
         help="destination for pages.jsonl and report.json",
     )
     parser.add_argument(
         "--min-page-characters",
         type=int,
-        default=40,
+        default=EXTRACTION.min_page_characters,
         help="non-whitespace threshold for short_text; 0 disables this heuristic",
     )
     parser.add_argument(
         "--extraction-mode",
         choices=("plain", "layout"),
-        default="plain",
+        default=EXTRACTION.mode,
         help="plain content-stream order or spatial layout order",
     )
     args = parser.parse_args(argv)

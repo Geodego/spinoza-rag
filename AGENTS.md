@@ -61,6 +61,10 @@ uv build --no-sources
   persistent indexing, and retrieval with fake embeddings; never require Ollama.
 - Indexing and search must read persisted page/chunk artifacts, never the PDF.
   Preserve configuration fingerprints and reject stale or incompatible indexes.
+- Define tunable defaults (paths, models, stage and future agent settings) in
+  src/spinoza_rag/config.py; CLIs and function defaults reference it, not
+  literals. Keep schema/normalization revisions in their modules. Do not rename
+  or reformat settings that are serialized into manifests or fingerprints.
 - Keep search retrieval-only until answer generation is explicitly requested.
 - Fix lint, format, and test failures before reporting completion or committing.
   Report checks actually executed and any unverified results.
