@@ -144,6 +144,8 @@ per-question failures and frozen configuration are documented in the
 [retrieval evaluation](docs/evaluation.md#first-official-partial-baseline).
 Finding one relevant page does not establish complete answer support.
 The targeted retrieval follow-up is [deferred](docs/future-improvements.md).
+Local answer demos and source-review limitations are recorded in
+[the demonstration notes](docs/demonstration.md).
 
 ### Limitations
 
@@ -184,12 +186,12 @@ remain out of scope.
 ## Technology
 
 Python 3.12 · uv · pypdf · LangChain text splitters with the Qwen3 tokenizer ·
-LangChain agents / LangGraph · Ollama (`qwen3:8b`, `qwen3-embedding:0.6b`) · Chroma (embedded, cosine) · Ruff · mypy ·
-pytest · GitHub Actions
+LangChain agents / LangGraph · Ollama (`qwen3:8b`, `qwen3-embedding:0.6b`) ·
+Chroma (embedded, cosine) · Ruff · mypy · pytest · GitHub Actions
 
 Runtime dependencies include pypdf, LangChain text splitters and agents,
-langchain-ollama, tokenizers, and Chroma. Chroma's default embedding function and telemetry are
-disabled, and the Ollama URL is restricted to loopback addresses.
+langchain-ollama, tokenizers, and Chroma. Chroma's default embedding function
+and telemetry are disabled, and the Ollama URL is restricted to loopback addresses.
 
 ## Development
 

@@ -19,13 +19,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("mode", choices=["context", "answer"])
     parser.add_argument("question")
-    parser.add_argument("--index-dir", type=Path, default=PATHS.index_dir)
-    parser.add_argument("--top-k", type=int, default=SEARCH.top_k)
-    parser.add_argument("--context-bytes", type=int, default=AGENT.context_bytes)
+    parser.add_argument(
+        "--index-dir", type=Path, default=PATHS.index_dir, help="verified local index"
+    )
+    parser.add_argument(
+        "--top-k", type=int, default=SEARCH.top_k, help="candidate passages per search"
+    )
+    parser.add_argument(
+        "--context-bytes",
+        type=int,
+        default=AGENT.context_bytes,
+        help="cumulative UTF-8 JSON evidence budget, capped at the default",
+    )
     parser.add_argument("--model", default=AGENT.model, help="installed chat model")
-    parser.add_argument("--embedding-model", default=EMBEDDING.model)
-    parser.add_argument("--ollama-url", default=OLLAMA.url)
-    parser.add_argument("--timeout", type=float, default=OLLAMA.timeout_seconds)
+    parser.add_argument(
+        "--embedding-model", default=EMBEDDING.model, help="installed embedding model"
+    )
+    parser.add_argument("--ollama-url", default=OLLAMA.url, help="loopback Ollama URL")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=OLLAMA.timeout_seconds,
+        help="seconds per Ollama request",
+    )
     args = parser.parse_args(argv)
 
     def display(event: Event) -> None:

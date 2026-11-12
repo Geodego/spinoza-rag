@@ -19,6 +19,8 @@ citations. The original `spinoza_rag.search` CLI remains retrieval-only and
 unchanged. `--help` lists index, model, retrieval, timeout and evidence limits.
 The timeout applies to each request, not to the whole run.
 
+Exact commands and reviewed outcomes: [local demonstration](demonstration.md).
+
 ## Architecture and bounds
 
 ```mermaid
@@ -71,9 +73,9 @@ refusal `Les preuves sont insuffisantes pour répondre.`, optionally followed by
 the fixed methodological caution `Une similarité vectorielle ne prouve rien.`.
 Other text following a refusal still requires citations. The prompt quotes the
 refusal separately; see [the regression diagnosis](knowledge/agent-refusal-boundary.md).
-A failure produces an actionable error and a nonzero CLI status. Tool retrieval failures are visible
-and consume a slot; the model can try once more or acknowledge insufficient
-proof. A no-evidence run returns a fixed French insufficient-evidence message.
+A failure produces an actionable error and a nonzero CLI status. Tool retrieval
+failures are visible and consume a slot; the model can try once more or
+acknowledge insufficient proof. A no-evidence run returns a fixed French insufficient-evidence message.
 
 A valid label proves only that a source exists in the registry. It does **not**
 prove entailment, relevance, completeness or factual grounding. Human inspection
@@ -121,3 +123,8 @@ semantic faithfulness needs source review. The retrieval evaluation remains a
 separate frozen experiment; informal answer demonstrations cannot improve its
 scores or establish answer quality. Discuss adjacent-page context and reranking
 as deferred, measurable experiments, not features already implemented.
+
+## API references
+
+- [LangChain create_agent](https://reference.langchain.com/python/langchain/agents/factory/create_agent)
+- [ChatOllama parameters](https://reference.langchain.com/python/langchain-ollama/langchain_ollama/chat_models/ChatOllama)
