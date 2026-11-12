@@ -36,8 +36,8 @@ it does not prove that installed hooks work.
 
 ## Resolution
 
-No repository workaround and no global configuration change; see the README's
-Development Setup:
+No repository workaround and no global configuration change; see the Toolchain
+section of [docs/development.md](../development.md#toolchain):
 
 - Shell: `export PATH="/usr/bin:$PATH"` for the session, or call `/usr/bin/git`.
 - PyCharm: set **Version Control → Git → Path to Git executable** to `/usr/bin/git`.

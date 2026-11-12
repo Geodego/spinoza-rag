@@ -1,253 +1,99 @@
 # Spinoza RAG
 
-A fully local Retrieval-Augmented Generation (RAG) project for exploring
-Gilles Deleuze's lectures on Spinoza.
+[![CI](https://github.com/Geodego/spinoza-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/Geodego/spinoza-rag/actions/workflows/ci.yml)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
+![Runs locally](https://img.shields.io/badge/inference-local%20%28Ollama%29-informational)
 
-The project aims to provide grounded answers to philosophical questions, supported by references to the original lecture transcripts.
+A fully local retrieval system for Gilles Deleuze's lectures on Spinoza. Ask a
+question in French and get the passages that address it, each cited to its
+exact PDF page and lecture date.
 
-## Architecture
+The goal is source-grounded answers to philosophical questions. Retrieval is
+implemented and measured; answer generation by a local LLM is the next stage.
+Everything runs on one machine: no cloud services, no paid APIs, and the corpus
+never leaves the disk.
 
-PDF extraction, persistent chunking, local embeddings, vector indexing, and
-retrieval-only search are implemented. Answer generation remains a future stage.
+```console
+$ uv run --locked python -m spinoza_rag.search \
+    "Quelle est la différence entre la joie et la tristesse ?" --top-k 3
 
-**Offline ingestion**
+[1] spinoza.pdf | PDF pp. 66–66 | lecture: 1980-12-09 | cosine distance: 0.2094
+Chunk: sha256:970f14788f236f62…
+<passage text>
 
-PDF → Page-aware JSONL → Persisted chunks → Ollama embeddings → Persistent Chroma index
+[2] spinoza.pdf | PDF pp. 291–291 | lecture: 1981-02-03 | cosine distance: 0.2236
+Chunk: sha256:94d366d0384754a7…
+<passage text>
 
-**Question answering**
-
-Implemented: User question → Query embedding → Retrieved passages + page references
-
-Planned later: Retrieved passages → Local LLM → Source-grounded answer
-
-Extraction, chunking, and indexing are separate commands. Queries reopen the
-persisted index and embed only the question; they never reprocess the PDF or
-recompute document embeddings.
-
-## Technology Stack
-
-- **Python 3.12** — Application development
-- **uv** — Dependency and environment management
-- **pypdf** — Implemented page-aware PDF extraction
-- **Ollama** — Local embeddings with `qwen3-embedding:0.6b`; inference is not implemented
-- **LangChain text splitters** — Token-aware recursive chunking
-- **Chroma** — Embedded persistent storage with cosine-distance retrieval
-- **Ruff** — Linting and formatting
-- **pytest** — Automated testing
-
-Runtime dependencies are pypdf, LangChain text splitters, tokenizers, and Chroma.
-No LangGraph, answer generation, reranking, hybrid search, web interface, or cloud
-integration is implemented. All corpus processing and inference requests remain
-local. Setup downloads the required packages, model, and tokenizer once; runtime
-commands do not download models or call hosted inference APIs.
-
-## Development Setup
-
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and use a
-current Git (at least 2.28) first.
-The verified toolchain is uv 0.12.1 and Python 3.12.13. The `.python-version`
-file pins the Python patch release; `requires-python` limits support to 3.12.
-On this macOS Intel machine, `/usr/local/bin/git` is an old Git 2.23 that breaks
-prek's staged-file checks (`invalid option: --no-relative`). Apple's existing
-`/usr/bin/git` 2.50.1 works. For this shell session, select it before setup:
-
-```sh
-export PATH="/usr/bin:$PATH"
-git --version
+[3] spinoza.pdf | PDF pp. 292–292 | lecture: 1981-02-03 | cosine distance: 0.2340
+Chunk: sha256:64bc8ddb65f6a70e…
+<passage text>
 ```
 
-In PyCharm, set **Version Control → Git → Path to Git executable** to
-`/usr/bin/git`. Global shell and IDE settings are not modified by this repository.
-On other machines, ensure the Git on PATH is current.
+The output is real; the passage text and the full chunk IDs are shortened here
+because the transcripts are not distributed with this repository.
 
-From a fresh checkout:
+## How it works
+
+```mermaid
+flowchart LR
+    subgraph offline["Offline ingestion (run once)"]
+        A[PDF] -->|pypdf, layout mode| B[pages.jsonl<br/>+ report.json]
+        B -->|Qwen tokenizer,<br/>LangChain splitter| C[chunks.jsonl<br/>+ manifest.json]
+        C -->|Ollama<br/>qwen3-embedding:0.6b| D[(Chroma index<br/>cosine)]
+    end
+    subgraph query["Question time"]
+        Q[Question] -->|embed question only| D
+        D --> R[Passages + page<br/>and lecture citations]
+        R -.->|planned| L[Local LLM answer]
+    end
+```
+
+Each stage is a separate command that reads the previous stage's persisted
+artifacts. Search reopens the index and embeds only the question; it never
+reprocesses the PDF or recomputes document embeddings.
+
+Key design decisions:
+
+- **Page provenance is preserved end to end.** The document ID is the SHA-256
+  of the PDF bytes, and every chunk keeps its one-based PDF page. Chunks never
+  cross page boundaries, so citations are exact, at the cost of occasionally
+  splitting an argument across pages.
+- **Lecture dates are inferred from the text.** Standalone `DD.MM.YYYY`
+  headings become ISO lecture dates, and chunks never span two lectures.
+- **Artifacts are fingerprinted and never silently reused when stale.** Each
+  manifest binds its inputs, settings, tokenizer, and the exact Ollama model
+  digest. A changed setting requires a new output directory instead of mixing
+  incompatible vectors.
+- **Indexing is resumable and idempotent.** Stable chunk IDs, upserts, and
+  per-batch checkpoints mean an interrupted build resumes only missing chunks,
+  and a complete rerun embeds nothing.
+- **Layout-mode extraction is the default.** Plain extraction split words
+  apart on sampled pages; layout mode fixed them. Both remain reproducible.
+
+Details: [PDF extraction](docs/ingestion.md) ·
+[chunking, indexing, and search](docs/indexing-and-search.md) ·
+[configuration](docs/configuration.md).
+
+## Quickstart
+
+### Prerequisites
+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) and Git 2.28 or
+  newer. The full pipeline is verified on macOS Intel with uv 0.12.1 and Python
+  3.12.13; CI runs the tests on Linux. If an old Git breaks the commit hooks, see
+  [development](docs/development.md#toolchain).
+- [Ollama](https://ollama.com/) running locally
+- About 650 MB of disk for the embedding model and tokenizer
+- Your own lawfully obtained PDF of the lectures, placed at `data/spinoza.pdf`
+  (no corpus is bundled; see [Corpus and licensing](#corpus-and-licensing))
+
+### One-time setup
 
 ```sh
 git clone https://github.com/Geodego/spinoza-rag.git
 cd spinoza-rag
-uv python install
 uv sync --locked
-uv run --locked prek install
-```
-
-`uv sync --locked` creates `.venv`, installs this package in editable mode and
-installs the development tools from `uv.lock`. Activation and a separate pip
-installation are unnecessary. In PyCharm, select `.venv/bin/python` as the
-project interpreter (`.venv\Scripts\python.exe` on Windows).
-
-`prek install` installs both pre-commit and commit-msg hooks. The hook
-configuration uses prek's built-in hygiene checks; use prek rather than the
-separate pre-commit runner. All configured hooks are check-only and do not
-rewrite source files.
-Format intentionally with `uv run --locked ruff format .`.
-
-Run the same checks before submitting changes:
-
-```sh
-uv run --locked ruff check .
-uv run --locked ruff format --check .
-uv run --locked pytest
-uv run --locked prek run --all-files
-uv build --no-sources
-```
-
-CI checks Linux using locked dependencies and a non-editable package
-installation; local verification covers macOS Intel. The smoke test verifies
-imports and installed distribution metadata from outside the checkout. Synthetic
-PDF tests exercise extraction, diagnostics, reruns, and failure handling. Retrieval
-tests use synthetic documents, a generated tokenizer, fake embeddings, and real
-local Chroma persistence. Tests run without the corpus, Ollama, or model downloads.
-
-## Repository Layout
-
-```text
-src/spinoza_rag/          Installable application package
-src/spinoza_rag/config.py Central defaults: paths, models, and stage settings
-src/spinoza_rag/ingest.py PDF extraction and verified artifact loading
-src/spinoza_rag/chunk.py Token-aware persistent chunking
-src/spinoza_rag/embeddings.py Local Ollama HTTP client
-src/spinoza_rag/index.py Resumable persistent Chroma indexing
-src/spinoza_rag/search.py Retrieval-only CLI
-tests/                   Synthetic ingestion, indexing, and retrieval tests
-docs/knowledge/          Engineering lessons and compatibility notes, indexed
-AGENTS.md                Shared coding-agent guidance
-CLAUDE.md                Imports AGENTS.md for Claude Code
-pyproject.toml           Metadata, dependencies, and tool configuration
-uv.lock                  Committed dependency resolution
-```
-
-`AGENTS.md` is the shared source of repository conventions for Codex and
-Claude Code. `CLAUDE.md` explicitly imports it so the same guidance is available
-across Claude Code versions. No global agent configuration is required.
-
-## PDF Preprocessing and Ingestion
-
-Place your locally obtained PDF at `data/spinoza.pdf`, then run from the repository
-root:
-
-```sh
-uv sync --locked
-uv run --locked python -m spinoza_rag.ingest
-```
-
-No corpus is bundled. If `data/spinoza.pdf` is absent, the command reports the
-missing file without publishing output. Tests generate their own synthetic PDFs.
-
-The default uses layout mode and writes to `storage/ingestion-layout/`, the
-chunking stage's default input. The destination contains:
-
-- `pages.jsonl`: one UTF-8 JSON object per physical PDF page, including empty or
-  failed pages. Each has `schema_version`, `document_id`, `source_file`,
-  `page_number` (one-based), `text`, and `diagnostics`.
-- `report.json`: source SHA-256 identity and size, PDF metadata (title, author,
-  subject, keywords, creator, producer, and raw date strings when available),
-  pypdf version, extraction settings (including mode), page counts, per-page diagnostics, parser
-  warnings, and a SHA-256 digest of the exact JSONL bytes.
-
-Only the source basename is persisted, not a machine-specific absolute path.
-`document_id` is `sha256:<PDF byte digest>`; moving or renaming a source does not
-change its identity. A changed PDF has a new identity. Page numbers refer to PDF
-positions, not printed page labels. Future chunks must retain these identifiers.
-
-Diagnostics flag:
-
-- `empty_text`: blank, whitespace-only, or image-only pages with no extracted text.
-- `short_text`: fewer than 40 non-whitespace characters by default.
-- `replacement_characters` or `control_characters`: suspicious decoded text.
-- `parser_warning`: pypdf recovered from an issue while processing a page.
-- `extraction_error`: a page could not be extracted; its record retains its page
-  number and error, and later pages are still processed.
-
-The report's summary includes empty, failed, text-bearing, and review-page
-counts. Document-level parser/metadata warnings are retained separately. Review
-signals are heuristics, not proof of quality: a legitimate title page may be
-short, and plausible-looking text can still have incorrect reading order.
-
-The CLI prints the summary and artifact paths, never the extracted text. Exit 0
-means extraction completed without failed pages and at least one page has text;
-empty/short-page and other review flags may still exist. Exit 1 means an input or
-output error, a page extraction failure, or no extractable text anywhere. In the
-last two cases, artifacts are still published for diagnosis. Argument syntax
-errors use argparse's standard exit 2. Encrypted and zero-page PDFs are rejected.
-
-### Reruns and Output Safety
-
-Results contain no run timestamps. With the same PDF basename, settings, and
-locked extractor version, the CLI verifies the existing PDF fingerprint,
-settings, JSONL checksum, page sequence/provenance, and report consistency before
-invoking pypdf. Valid artifacts are reused without PDF extraction or file
-rewrites; the CLI prints `Reusing verified artifacts; PDF extraction skipped.`
-Only a missing destination triggers extraction. The component never appends
-page records. Validation still reads the PDF bytes and existing JSON artifacts.
-
-Incomplete, corrupt, or outdated artifacts fail early without re-extraction or
-overwriting. Select a new destination for changed PDFs/settings or repairs.
-Cached runs retain the original diagnostic summary and failure exit status.
-The output schema version is also the extraction revision: bump it when changing
-extraction behavior so older results cannot be silently reused.
-
-Both artifacts are written into a temporary sibling directory before a single
-rename publishes the directory. Write or publication errors leave no partial
-new destination. Existing output must match both expected files exactly;
-changed inputs/settings, incomplete output, or additional files cause a refusal
-without changing existing files. Choose a new destination when re-extracting a
-changed input or testing different settings:
-
-```sh
-uv run --locked python -m spinoza_rag.ingest data/spinoza.pdf \
-  --output-dir storage/ingestion-v2 --min-page-characters 40
-```
-
-Use `--min-page-characters 0` to disable only the short-text heuristic. This is a
-sequential local component; concurrent writers are outside its scope.
-
-The first plain-mode run extracted 531 pages without empty pages or parser
-errors, but spot checks found spaces inside words. Layout mode fixes those
-sampled word splits and orders page-number footers after the body text. It also
-adds layout whitespace. Layout is therefore the default; the mode is recorded in
-the report. The original plain output is preserved and remains reproducible:
-
-```sh
-uv run --locked python -m spinoza_rag.ingest \
-  --extraction-mode plain --output-dir storage/ingestion
-```
-
-No heuristic report replaces visual review of representative PDF passages and
-reading order.
-
-### Extraction Decisions and Limits
-
-`extract_pdf()` performs extraction without writing artifacts;
-`write_extraction()` handles serialization and publication. No chunking, vector
-index is involved in PDF extraction. Later stages consume the saved artifacts.
-
-[pypdf](https://pypdf.readthedocs.io/en/stable/user/extract-text.html) was selected
-as a pure-Python, [BSD-licensed](https://github.com/py-pdf/pypdf/blob/main/LICENSE)
-starting point. Tests verify French accents, page provenance, metadata, and
-failure behavior. The actual lecture PDF has been processed locally; sampled plain and layout
-results were compared as described above. Full transcription accuracy and complex
-reading order remain unverified. Inspect representative passages against the PDF
-before choosing normalization or chunking rules.
-
-Plain extraction normalizes only CRLF/CR line endings to LF. It preserves accents,
-line breaks, headers, footers, and hyphenation; it does not infer paragraphs or
-remove repeated text. pypdf performs no OCR, so scanned pages need a separate
-future decision. The source and extracted text are held in memory, which is
-appropriate for this initial single-document component; large-document memory
-and extraction performance have not been systematically benchmarked.
-
-## Persistent Chunking, Embeddings, and Search
-
-These stages read the layout artifacts in `storage/ingestion-layout/` by
-default. They do not open the original PDF. Keep the page artifacts and
-chunk artifacts alongside the index: their fingerprints are verified during
-indexing and search.
-
-### One-Time Local Setup
-
-```sh
-uv sync --locked
-# Start the Ollama desktop application first, if it is not already running.
 ollama pull qwen3-embedding:0.6b
 mkdir -p models
 curl --fail --location \
@@ -256,240 +102,104 @@ curl --fail --location \
 shasum -a 256 models/qwen3-embedding-tokenizer.json
 ```
 
-The pinned tokenizer SHA-256 is
+The tokenizer SHA-256 must be
 `def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a`.
-Only this tokenizer JSON is needed; PyTorch and Transformers are not required.
-The model download is about 639 MB and the tokenizer about 11.4 MB. Neither is
-stored in Git. Application commands never pull a missing model automatically.
+Setup downloads packages, model, and tokenizer once; later commands never
+download models or call hosted APIs.
 
-The verified local stack uses Chroma 1.5.9, langchain-text-splitters 1.1.3,
-tokenizers 0.22.2, and Ollama 0.40.16 on macOS Intel. Recent ONNX Runtime
-releases, a transitive Chroma dependency, have no Intel macOS wheels, so uv must
-resolve for that platform (`required-environments`); the lock currently selects
-ONNX Runtime 1.23.2. See `docs/knowledge/chroma-onnxruntime-intel-macos.md`.
-ONNX is not used for embeddings: Chroma's default embedding function is
-explicitly disabled. Chroma telemetry is disabled.
-The Ollama URL is restricted to HTTP loopback addresses, defaulting to
-`http://127.0.0.1:11434`; environment HTTP proxies are bypassed.
-
-### Run the Three Independent Stages
+### Run the pipeline
 
 ```sh
-uv run --locked python -m spinoza_rag.chunk
-uv run --locked python -m spinoza_rag.index
+uv run --locked python -m spinoza_rag.ingest   # PDF -> storage/ingestion-layout/
+uv run --locked python -m spinoza_rag.chunk    # -> storage/chunks/
+uv run --locked python -m spinoza_rag.index    # -> storage/index/ (about 30 min, see Results)
 uv run --locked python -m spinoza_rag.search \
-  "Quelle est la différence entre la joie et la tristesse ?" --top-k 3
+  "Que sont les notions communes ?" --top-k 3
 ```
 
-Restart the process and run the search command again: document vectors are read
-from disk, and only the question is embedded. Ollama must be running for query
-embeddings. No answer is generated; the CLI prints the nearest passages, source
-filename, one-based PDF page range, inferred lecture date, stable chunk ID, and
-cosine distance (smaller is closer, not an answer-confidence score).
+Each stage's default output is the next stage's default input. Every command
+accepts `--help`, and `python -m spinoza_rag.config` prints all defaults. Rerunning
+a stage with unchanged inputs verifies and reuses its artifacts.
 
-Default inputs and outputs:
+## Results
 
-| Stage | Input | Persisted output |
-| --- | --- | --- |
-| Ingest | `data/spinoza.pdf` | `storage/ingestion-layout/pages.jsonl` and `report.json` |
-| Chunk | `storage/ingestion-layout/` and the local tokenizer | `storage/chunks/chunks.jsonl` and `manifest.json` |
-| Index | `storage/chunks/` | `storage/index/chroma/` and `manifest.json` |
-| Search | `storage/index/`, existing upstream artifacts, and a question | Printed passages; no document embedding generation |
+On the current local PDF (531 pages, 13 lecture dates):
 
-Paths between artifacts are recorded relatively, so the storage tree can move
-together. Staleness is checked against saved page/chunk artifacts. If the original
-PDF changes, explicitly rerun extraction first; indexing and search never read
-that PDF to guess whether extraction is out of date.
+- **1,194 chunks**, median 299 tokens, capped at 450.
+- **Full index build:** 29 min 37 s on a macOS Intel machine (batch size 8); a rerun completes in
+  under a second with nothing re-embedded. The index occupies about 21 MB.
+- **Search:** about 0.9 s per question after startup, embedding exactly one
+  text.
+- **Informal spot checks:** four of six French questions returned on-topic
+  passages in the top three, with cosine distances of 0.13–0.25. Questions on
+  *conatus* and *puissance/pouvoir* were weaker. Every returned passage was
+  verified to appear on its cited page.
 
-Chunk embeddings are stored only in `storage/index/chroma/`. Neither
-`chunks.jsonl` nor the index `manifest.json` contains vectors; the manifest
-records only their dimensions. Each vector is a unit-normalized embedding of
-1,024 float32 values, stored with the chunk ID, text, and provenance metadata.
-Read them back through Chroma, for example with
-`collection.get(include=["embeddings"])`, not from the files.
+These are observations, not a benchmark. See
+[corpus observations](docs/evaluation.md) for the method and per-question table.
 
-Treat the `chroma/` directory as one opaque unit and copy, back up, or delete it
-whole. The layout is a Chroma implementation detail, observed with Chroma 1.5.9
-in the current index:
+### Limitations
 
-- `chroma.sqlite3` holds IDs, passages, metadata, and a write-ahead log that
-  also stores raw vectors.
-- A UUID-named folder holds the HNSW vector index, written to disk in batches.
-  It held 1,000 of the 1,194 vectors; Chroma replays the remaining 194 from the
-  SQLite log when the index opens.
+- There is no gold-set retrieval evaluation yet, so semantic accuracy is not
+  established.
+- No answer generation, reranking, or hybrid (keyword + vector) search.
+- Hard page boundaries can split an argument; short fragments and retained
+  headers can add noise.
+- Extraction is not OCR, and full transcription accuracy and reading order are
+  only spot-checked.
+- Single-document, sequential pipeline; concurrent writers are out of scope.
 
-Copying only the HNSW files would therefore silently lose recent vectors.
+## Status and roadmap
 
-### Chunking Decisions and Provenance
+**Work in progress.** Implemented: page-aware PDF extraction with diagnostics,
+token-aware chunking, local Ollama embeddings, resumable Chroma indexing, and
+retrieval-only search. Synthetic tests cover persistence, restart,
+compatibility checks, errors, and the guarantee that search never re-embeds
+documents.
 
-The defaults are 450 Qwen tokens and a 70-token **overlap target**. Tokens are
-counted with the local Qwen tokenizer, excluding special tokens. LangChain's
-recursive splitter prefers paragraphs, lines, sentences, then words; overlap can
-be smaller at structural boundaries. Custom settings are explicit:
+The current milestone ends with a retrieval-quality review before the next one
+is chosen. Candidate next steps:
+
+- A small gold set of questions with expected pages, measuring recall@k and MRR.
+- Retrieval improvements judged against that set (chunking, reranking, hybrid search).
+- Answer generation with a local Ollama LLM, citing retrieved pages.
+
+LangGraph orchestration, agents, and a web interface are out of scope for now.
+
+## Technology
+
+Python 3.12 · uv · pypdf · LangChain text splitters with the Qwen3 tokenizer ·
+Ollama (`qwen3-embedding:0.6b`) · Chroma (embedded, cosine) · Ruff · pytest ·
+GitHub Actions
+
+Runtime dependencies are limited to pypdf, LangChain text splitters,
+tokenizers, and Chroma. Chroma's default embedding function and telemetry are
+disabled, and the Ollama URL is restricted to loopback addresses.
+
+## Development
 
 ```sh
-uv run --locked python -m spinoza_rag.chunk \
-  --input-dir storage/ingestion-layout --output-dir storage/chunks-experiment \
-  --chunk-tokens 500 --overlap-tokens 80
-uv run --locked python -m spinoza_rag.index \
-  --chunks-dir storage/chunks-experiment --index-dir storage/index-experiment
-uv run --locked python -m spinoza_rag.search "Que sont les notions communes ?" \
-  --index-dir storage/index-experiment --top-k 3
+uv sync --locked
+uv run --locked prek install
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked pytest
 ```
 
-Chunks have hard page boundaries, so `page_start == page_end` in this baseline.
-This makes citations exact but can split an argument across pages. Within-page
-lecture boundaries are also respected: standalone `DD.MM.YYYY` headings become
-ISO lecture dates, carried forward until the next heading. A page can have chunks
-from two lectures. Dates are inferred, not authoritative annotations; cover and
-contents pages may have no lecture date.
+Tests use synthetic PDFs, a generated tokenizer, fake embeddings, and real local
+Chroma persistence; they need neither the corpus nor Ollama. CI runs on Linux.
+See [development](docs/development.md) for the toolchain, full checks, repository
+layout, and dependency maintenance, and [`AGENTS.md`](AGENTS.md) for coding
+conventions. Reusable compatibility lessons are indexed in
+[`docs/knowledge/`](docs/knowledge/README.md).
 
-Whitespace normalization joins wrapped lines, preserves paragraph breaks, and
-removes a matching page number only at page edges. It does not repair hyphenation,
-remove arbitrary headers, summarize text, or invent section titles. Empty pages
-are skipped; extraction-error pages block chunking rather than silently omitting
-content. Very short fragments remain visible for later quality evaluation.
+## Corpus and licensing
 
-Every chunk stores the PDF document fingerprint, source filename, one-based page
-range, page-local ordinal, text, Qwen token count, and available lecture identity.
-Its stable ID hashes the record and exact chunking configuration. The manifest
-records the original PDF metadata, page JSONL checksum, tokenizer checksum,
-normalization revision, LangChain/tokenizer versions, and chunk JSONL checksum.
-Identical chunking runs reuse verified output without rewriting it; changed inputs
-or settings require a new output directory.
+The project is designed around transcripts of Gilles Deleuze's lectures on
+Spinoza. The source PDF and extracted text are not included in this repository;
+users must provide their own lawfully obtained copy.
 
-### Index Compatibility and Recovery
-
-Indexing uses `/api/embed` with `truncate=false`, validates vectors, and stores
-normalized embeddings in a cosine Chroma collection. Documents are embedded
-without a query prefix. Questions use Qwen's `Instruct: ...\nQuery: ...` format;
-the instruction is recorded in the index configuration.
-
-The index fingerprint binds the chunk manifest, exact installed Ollama model
-digest and runtime version, collection, distance metric, and query instruction.
-Changing any of these is rejected with a request for a new index directory;
-weights behind a reused model tag cannot be silently mixed. Chroma record IDs,
-passages, and metadata are checked against persisted chunks when reopening.
-
-Stable IDs and upserts prevent duplicates. Repeated indexing reports
-`embedded_this_run: 0` when complete. Each completed batch is checkpointed; an
-interrupted or unavailable-server run resumes only missing IDs. A vector batch
-committed immediately before a checkpoint failure is recovered without embedding
-it again. Search rejects incomplete indexes. Concurrent writers are outside this
-sequential baseline's scope.
-
-Index and search accept `--batch-size` (index only), `--timeout`, and
-`--ollama-url`; a missing model or unreachable service produces an actionable
-error. Schema/configuration changes are never automatically applied
-to old indexes. Keep the existing output and choose a new directory to rebuild.
-
-### Current Local Corpus Observations
-
-The page artifacts produce **1,194 chunks** across 531 pages and 13 detected
-lecture dates. Chunk lengths range from 1 to 450 tokens, with a median of 299;
-seven fragments contain fewer than 20 tokens. These are measurement results for
-the current local PDF, not guarantees about other documents. The default can be
-evaluated and changed later without mixing its index with another configuration.
-
-The first full index build embedded all 1,194 chunks as 1,024-dimensional vectors
-in 29 minutes 37 seconds (`indexing_seconds` 1,776.9, batch size 8) on the macOS
-Intel machine with Ollama 0.40.16. The Chroma directory occupies
-about 21 MB. Rerunning indexing reported `embedded_this_run: 0` and
-`reused: 1194` in under one second and left the index manifest byte-identical.
-Chroma's SQLite file still changes on reopen, apparently from internal
-bookkeeping, so its checksum is not a reliable "unchanged" signal. After the
-reruns, Chroma still held 1,194 embeddings with a maximum write sequence of
-1,194, one write per chunk.
-
-Six French questions were run in a fresh process with an embedder wrapper that
-counted inputs. Each search embedded exactly one text, the question, and took
-about 0.9 seconds after startup. All 30 top-5 passages carried the source
-filename, PDF page, lecture date, and chunk ID. Each passage's whitespace-
-normalized text was also found on its cited page in the saved page artifacts.
-Spot-check results, with PDF pages and cosine distances of the top passages:
-
-| Question | Top PDF pages | Distances | Observation |
-| --- | --- | --- | --- |
-| Joie et tristesse | 66, 291, 292 | 0.21–0.25 | On topic |
-| Notions communes | 308, 306, 304 | 0.17–0.25 | On topic, one lecture |
-| Troisième genre de connaissance | 451, 314, 446 | 0.13–0.25 | On topic |
-| Mal, morale et éthique | 35, 86, 137, 151 | 0.19–0.23 | On topic |
-| Conatus | 69, then unrelated | 0.30, ~0.40 | One relevant hit, then weak |
-| Puissance et pouvoir | 47, 64 | 0.30–0.32 | Related, no direct contrast |
-
-These are informal observations, not a benchmark. Semantic accuracy
-is not established by fake-embedding tests, and there is no formal gold-set
-retrieval evaluation yet. Page boundaries, short fragments, retained headers,
-and imperfect extraction can affect relevance. No reranking or answer generation
-is included in this milestone.
-
-## Dependency Maintenance
-
-Use `uv add <package>` for runtime dependencies and `uv add --dev <package>` for
-development tools. Commit `pyproject.toml` and `uv.lock` together. Avoid
-`uv pip install` for project dependencies because it does not update the lock.
-
-For a deliberate update, run `uv lock --upgrade-package <package>`, then
-`uv sync --locked` and the checks above. Use `--locked` for routine checks so
-stale metadata fails instead of silently changing the lockfile. Review tool
-upgrades before accepting their new rules or behavior.
-
-Update `.python-version` deliberately when adopting a new Python 3.12 patch.
-The build backend is pinned in `[build-system]`; CI pins uv to the same release.
-Update both together when moving uv versions, check `[tool.uv].required-version`,
-and verify sync, tests, and build. Review the pinned GitHub Action revisions
-periodically; dependency and toolchain updates remain explicit.
-
-## Local Data
-
-Keep source PDFs in `data/`, generated indexes and extraction output in
-`storage/`, and downloaded model files in `models/`. These directories are
-ignored, as are legacy `chroma/`, PDF files, and GGUF weights. Tests should use
-small synthetic fixtures with explicit page numbers and source identities.
-### Configuration Defaults
-
-All defaults live in `src/spinoza_rag/config.py`, grouped by area: paths,
-extraction, chunking, Ollama, embedding, index, and search. Each stage's
-default output is the next stage's default input, so the stages chain without
-flags. Every CLI shows its effective defaults in `--help`; print them all with:
-
-```sh
-uv run --locked python -m spinoza_rag.config
-```
-
-CLI flags override defaults for one run. Library functions take explicit values
-and fall back to the same defaults. The defaults say what the next run will
-use; each artifact's manifest or report records what an existing run actually
-used. Several defaults enter configuration fingerprints: the extraction mode
-and short-page threshold, the chunk sizes, the embedding model and query
-instruction, and the collection name. Changing one makes existing artifacts
-incompatible, so the next run requires a new output directory. Schema and
-normalization revisions are code behavior, not settings, and stay in their
-modules.
-
-There are no environment variables or settings files; add one only when a
-concrete need appears, documenting only settings the code consumes.
-
-## Project Status
-
-**Work in progress.**
-
-Implemented: PDF extraction with page provenance and diagnostics; persistent
-LangChain/Qwen-tokenized chunking; local Ollama embeddings; resumable Chroma
-indexing; and retrieval-only search. Synthetic tests cover persistence, restart,
-compatibility checks, errors, and no-document-reembedding behavior.
-
-Answer generation, LangGraph orchestration, agents, reranking, hybrid search,
-and a web interface remain out of scope. Stop here for retrieval-quality review
-before choosing the next milestone.
-
-## Corpus and Licensing
-
-The project is designed around transcripts of Gilles Deleuze's lectures on Spinoza.
-
-The source PDF and extracted text are not included in this repository. Users must provide their own lawfully obtained copy of the material.
-
-The repository contains application code and synthetic test fixtures, not the
-underlying copyrighted lecture transcripts. Source PDFs, extracted text, chunks,
-embeddings, indexes, and models belong in ignored local directories. A code
-license has not yet been chosen; corpus rights remain separate.
+The repository contains application code and synthetic test fixtures only.
+Source PDFs, extracted text, chunks, embeddings, indexes, and models belong in
+the Git-ignored `data/`, `storage/`, and `models/` directories. A code license
+has not yet been chosen; corpus rights remain separate.

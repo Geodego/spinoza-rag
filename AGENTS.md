@@ -3,7 +3,8 @@
 ## Project and boundaries
 
 spinoza-rag is a fully local RAG application for Deleuze's lectures on Spinoza.
-See README.md for architecture, setup, and current status.
+See README.md for the overview, quickstart, and current status, and
+docs/README.md for detailed design, configuration, and development pages.
 This is a personal learning and portfolio project: prioritize technical substance
 and measured tradeoffs over new tools, contributor processes, or releases.
 
@@ -36,10 +37,10 @@ code, configuration, tests, and uv.lock remain authoritative.
 
 ## Setup and checks
 
-Use Python 3.12, uv, and current Git (at least 2.28). See README.md if an older
-Git on PATH breaks prek. On the audited Mac, use `/usr/bin/git` rather than the
-old `/usr/local/bin/git` (see `docs/knowledge/git-prek-no-relative.md`). Run
-from the repository root:
+Use Python 3.12, uv, and current Git (at least 2.28). See docs/development.md if
+an older Git on PATH breaks prek. On the audited Mac, use `/usr/bin/git` rather
+than the old `/usr/local/bin/git` (see
+`docs/knowledge/git-prek-no-relative.md`). Run from the repository root:
 
 ```sh
 uv sync --locked

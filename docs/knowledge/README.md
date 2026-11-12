@@ -33,4 +33,5 @@ and searchable:
 **Status** values are `Verified`, `Partially verified`, `Hypothesis`, or
 `Obsolete`. Mark obsolete entries and say what replaced them rather than
 deleting them silently. Leave out chronological transcripts, trivial
-debugging steps, and anything the README or code already states.
+debugging steps, and anything the README, the other docs/ pages, or the code
+already states.
