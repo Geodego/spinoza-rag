@@ -131,3 +131,9 @@ without re-embedding. Ollama must be running for query embeddings. No answer is
 generated; the CLI prints the nearest passages, source filename, one-based PDF
 page range, inferred lecture date, stable chunk ID, and cosine distance (smaller
 is closer, not an answer-confidence score).
+
+## Evaluating retrieval
+
+The [evaluation CLI](evaluation.md) calls the same saved-index search without
+changing the pipeline or re-embedding documents. It scores unique PDF pages
+against explicitly validated annotations; proposed references are kept separate.

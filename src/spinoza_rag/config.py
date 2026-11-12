@@ -32,6 +32,8 @@ class Paths:
     pages_dir: Path = Path("storage/ingestion-layout")
     chunks_dir: Path = Path("storage/chunks")
     index_dir: Path = Path("storage/index")
+    gold_set: Path = Path("evaluation/gold.v1.json")
+    evaluation_dir: Path = Path("storage/evaluations/baseline")
     tokenizer: Path = Path("models/qwen3-embedding-tokenizer.json")
 
 
@@ -103,6 +105,14 @@ class SearchSettings:
     top_k: int = 5
 
 
+@dataclass(frozen=True)
+class EvaluationSettings:
+    """Page cutoffs and the fixed candidate-chunk budget for evaluation."""
+
+    ks: tuple[int, ...] = (1, 3, 5, 10)
+    chunk_limit: int = 50
+
+
 PATHS = Paths()
 EXTRACTION = ExtractionSettings()
 CHUNKING = ChunkConfig()
@@ -110,6 +120,7 @@ OLLAMA = OllamaSettings()
 EMBEDDING = EmbeddingSettings()
 INDEX = IndexSettings()
 SEARCH = SearchSettings()
+EVALUATION = EvaluationSettings()
 
 
 def defaults() -> dict[str, dict[str, object]]:
@@ -122,6 +133,7 @@ def defaults() -> dict[str, dict[str, object]]:
         "embedding": EMBEDDING,
         "index": INDEX,
         "search": SEARCH,
+        "evaluation": EVALUATION,
     }
     return {
         name: {

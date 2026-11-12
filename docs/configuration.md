@@ -1,7 +1,7 @@
 # Configuration defaults
 
 All defaults live in `src/spinoza_rag/config.py`, grouped by area: paths,
-extraction, chunking, Ollama, embedding, index, and search. Each stage's
+extraction, chunking, Ollama, embedding, index, search, and evaluation. Each stage's
 default output is the next stage's default input, so the stages chain without
 flags. Every CLI shows its effective defaults in `--help`; print them all with:
 
@@ -23,6 +23,11 @@ modules.
 
 There are no environment variables or settings files; add one only when a
 concrete need appears, documenting only settings the code consumes.
+
+Evaluation defaults include `evaluation/gold.v1.json`, `storage/evaluations/baseline/`,
+a 50-chunk candidate pool, and page cutoffs 1, 3, 5, and 10. The annotation
+file is version controlled; generated run reports stay under ignored storage.
+See [evaluation](evaluation.md) for the ranking protocol and validation gate.
 
 ## Local data directories
 

@@ -76,6 +76,24 @@ not change. It fails on relative links whose target file or heading anchor is
 missing, and on a README longer than 250 lines. External URLs are not checked.
 Run it directly with `uv run --locked python scripts/check_docs.py`.
 
+## Evaluating from a worktree
+
+A fresh worktree has no ignored corpus/index/model artifacts. To reuse an existing
+index, pass an absolute `--index-dir` pointing at the original checkout's
+`storage/index`; keep that index's relative upstream page/chunk paths intact.
+Run from the feature worktree so its code and annotation file are used, and
+choose a new output directory there. Example, replacing the index path:
+
+```sh
+uv run --locked python -m spinoza_rag.evaluate \
+  --index-dir /absolute/path/to/original-checkout/storage/index \
+  --output-dir storage/evaluations/baseline-v1
+```
+
+Do not copy individual Chroma files or rebuild the corpus just to evaluate it.
+If subprocesses fail to import an editable package on macOS, see
+[hidden .pth files](knowledge/python-hidden-pth.md).
+
 ## Repository layout
 
 ```text
@@ -86,6 +104,8 @@ src/spinoza_rag/chunk.py       Token-aware persistent chunking
 src/spinoza_rag/embeddings.py  Local Ollama HTTP client
 src/spinoza_rag/index.py       Resumable persistent Chroma indexing
 src/spinoza_rag/search.py      Retrieval-only CLI
+src/spinoza_rag/evaluate.py    Validated/proposed page-level retrieval evaluation
+evaluation/gold.v1.json        Corpus-free candidate questions and supporting pages
 tests/                         Synthetic ingestion, indexing, and retrieval tests
 scripts/check_docs.py          Markdown link and README length check (prek hook)
 docs/                          Design, reference, and evaluation notes

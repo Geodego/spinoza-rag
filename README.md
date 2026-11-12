@@ -9,7 +9,7 @@ question in French and get the passages that address it, each cited to its
 exact PDF page and lecture date.
 
 The goal is source-grounded answers to philosophical questions. Retrieval is
-implemented and measured; answer generation by a local LLM is the next stage.
+implemented; a human-validated retrieval baseline is the current milestone.
 Everything runs on one machine: no cloud services, no paid APIs, and the corpus
 never leaves the disk.
 
@@ -135,13 +135,17 @@ On the current local PDF (531 pages, 13 lecture dates):
   *conatus* and *puissance/pouvoir* were weaker. Every returned passage was
   verified to appear on its cited page.
 
-These are observations, not a benchmark. See
-[corpus observations](docs/evaluation.md) for the method and per-question table.
+These are informal observations, not a validated quality benchmark. The
+[retrieval evaluation](docs/evaluation.md) measures whether Qwen embeddings,
+Chroma, and the current chunks retrieve the pages needed for French philosophical
+questions. This evidence will guide the choice between improving retrieval and
+proceeding to answer generation. It measures page-level Hit@k, annotated-support
+Recall@k, and MRR@k at 1, 3, 5, and 10.
 
 ### Limitations
 
-- There is no gold-set retrieval evaluation yet, so semantic accuracy is not
-  established.
+- No official retrieval baseline exists yet: all initial annotations are
+  proposed and excluded from official metrics until human approval.
 - No answer generation, reranking, or hybrid (keyword + vector) search.
 - Hard page boundaries can split an argument; short fragments and retained
   headers can add noise.
@@ -152,17 +156,21 @@ These are observations, not a benchmark. See
 ## Status and roadmap
 
 **Work in progress.** Implemented: page-aware PDF extraction with diagnostics,
-token-aware chunking, local Ollama embeddings, resumable Chroma indexing, and
-retrieval-only search. Synthetic tests cover persistence, restart,
+token-aware chunking, local Ollama embeddings, resumable Chroma indexing,
+retrieval-only search, and a reproducible evaluation CLI. Synthetic tests cover
+page metrics, annotation status, persistence, restart,
 compatibility checks, errors, and the guarantee that search never re-embeds
 documents.
 
-The current milestone ends with a retrieval-quality review before the next one
-is chosen. Candidate next steps:
+The evaluation framework and AI annotation preparation are complete for the
+current draft. The 25-question set remains proposed; human validation, approval
+of the equivalence/graded-scoring changes, and the official baseline are pending.
+See [current status and next steps](docs/evaluation.md#current-status-and-next-steps)
+for what is implemented, the remaining decisions, and the completion criteria.
 
-- A small gold set of questions with expected pages, measuring recall@k and MRR.
-- Retrieval improvements judged against that set (chunking, reranking, hybrid search).
-- Answer generation with a local Ollama LLM, citing retrieved pages.
+The next milestone will be chosen after reviewing the validated baseline:
+retrieval improvements for demonstrated weaknesses, or local answer generation
+with citations if retrieval is adequate.
 
 LangGraph orchestration, agents, and a web interface are out of scope for now.
 
@@ -200,7 +208,7 @@ The project is designed around transcripts of Gilles Deleuze's lectures on
 Spinoza. The source PDF and extracted text are not included in this repository;
 users must provide their own lawfully obtained copy.
 
-The repository contains application code and synthetic test fixtures only.
+The repository contains code, synthetic tests, and corpus-free question annotations.
 Source PDFs, extracted text, chunks, embeddings, indexes, and models belong in
 the Git-ignored `data/`, `storage/`, and `models/` directories. A code license
 has not yet been chosen; corpus rights remain separate.

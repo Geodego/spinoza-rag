@@ -1,0 +1,672 @@
+{
+  "schema_version": 1,
+  "version": "1.3.0-proposed",
+  "document_id": "sha256:66ddeacf8dc52cc7dde8156cd1fdd7766dc0c2587854f94a3b78442117966862",
+  "pages_sha256": "77fbfefc622eef5b3e7ce2790bc40c53a3d6ad0460e7f3ef841c53338b0ef023",
+  "discovery": {
+    "method": "two_pass_ai_keyword_and_direct_page_inspection",
+    "date": "2026-11-12",
+    "annotation": "Annotation IA en deux passes sur les pages extraites persistées : recherche lexicale et lecture directe initiales, puis annotation aveugle indépendante par deux annotateurs IA en contextes neufs disposant uniquement des questions et des pages. Parcours des 531 pages avec variantes lexicales, lecture des candidates et de leur voisinage, distinction entre noyau et appuis secondaires, puis adjudication avec relecture des ajouts au noyau. Aucun résultat vectoriel utilisé pour sélectionner les références. Les lectures de la seconde passe ne sont pas indépendamment reproduites; prompts exacts, identités des modèles et sorties individuelles non conservés. Aucune validation humaine. Les références numériques contiennent uniquement le noyau fusionné, avec la première page des groupes équivalents. Les alternatives et les appuis secondaires de confiance moindre, non revus systématiquement, sont conservés en annotations et ignorés par le scoreur actuel. Dates inférées des en-têtes et contrôlées contre la table des matières lors de l’annotation. Références non exhaustives; 25 questions proposées. q18 omise faute de référence reliant nécessité et devenir libre."
+  },
+  "questions": [
+    {
+      "id": "q01",
+      "question_fr": "Quelle différence Deleuze établit-il entre affectio et affectus ?",
+      "references": [
+        {
+          "pdf_page": 198,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 199,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 201,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 286,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 287,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Terminologie. 198 distingue les termes; 199 précise leur différence de nature; 201 caractérise le passage vécu et la durée. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 197, 200, 202, 205, 215, 288, 303, 497. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q02",
+      "question_fr": "Comment distinguer ce qui nous arrive à un instant du changement vécu entre deux états ?",
+      "references": [
+        {
+          "pdf_page": 198,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 199,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 200,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 201,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 202,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 287,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 288,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Paraphrase. La transition entre états est vécue, plutôt que produite par une comparaison mentale; 288 reprend les variations comme des vecteurs. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 196, 197, 203, 204, 215, 216, 219, 286. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q03",
+      "question_fr": "Comment Deleuze interprète-t-il le conatus et pourquoi discute-t-il sa traduction par effort ?",
+      "references": [
+        {
+          "pdf_page": 58,
+          "lecture_date": "1980-12-09"
+        },
+        {
+          "pdf_page": 69,
+          "lecture_date": "1980-12-16"
+        },
+        {
+          "pdf_page": 70,
+          "lecture_date": "1980-12-16"
+        },
+        {
+          "pdf_page": 93,
+          "lecture_date": "1981-01-06"
+        }
+      ],
+      "annotation": "Terminologie. Discussion avec Comtesse, interprétation par l’effectuation de la puissance, puis priorité de la persévérance sur la tendance dans la lecture de Deleuze en 93. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 57, 92, 120, 384, 385, 418. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q04",
+      "question_fr": "Comment un organisme continue-t-il à exister alors que ses composants et leurs rapports changent ?",
+      "references": [
+        {
+          "pdf_page": 92,
+          "lecture_date": "1981-01-06"
+        },
+        {
+          "pdf_page": 93,
+          "lecture_date": "1981-01-06"
+        },
+        {
+          "pdf_page": 323,
+          "lecture_date": "1981-02-10"
+        },
+        {
+          "pdf_page": 324,
+          "lecture_date": "1981-02-10"
+        }
+      ],
+      "annotation": "Paraphrase. 92 développe le renouvellement osseux et la circulation des rapports; 93 précise le sens de la persévérance. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 90, 94, 99, 103/110, 129, 319, 415, 416. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q05",
+      "question_fr": "Pourquoi la puissance est-elle toujours en acte plutôt qu’une réserve de possibilités non réalisées ?",
+      "references": [
+        {
+          "pdf_page": 64,
+          "lecture_date": "1980-12-09"
+        },
+        {
+          "pdf_page": 65,
+          "lecture_date": "1980-12-09"
+        }
+      ],
+      "annotation": "Terminologie. Identité de la puissance et de son effectuation à chaque instant. 66 et 71 sont des appuis secondaires, hors du noyau. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 42, 43, 58, 66, 67, 70, 71, 219, 286, 418. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q06",
+      "question_fr": "Quelle différence y a-t-il entre augmenter sa puissance d’agir et en prendre possession ?",
+      "references": [
+        {
+          "pdf_page": 221,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 222,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 295,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 296,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 300,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 303,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Terminologie et synthèse entre séances. Joies passives, affects actifs et possession de la puissance. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 223, 224, 234, 294, 302. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q07",
+      "question_fr": "En quel sens le tyran et le prêtre, malgré leur pouvoir, s'opposent-ils au mode d'existence de l'homme fort ?",
+      "references": [
+        {
+          "pdf_page": 60,
+          "lecture_date": "1980-12-09"
+        },
+        {
+          "pdf_page": 61,
+          "lecture_date": "1980-12-09"
+        },
+        {
+          "pdf_page": 63,
+          "lecture_date": "1980-12-09"
+        }
+      ],
+      "annotation": "Contraste entre les modes d’existence du tyran, du prêtre et de l’homme fort. La distinction explicite entre puissance et pouvoir en 211 complète ce contraste; elle est une référence du noyau pour q08. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 59, 62, 211, 290, 294, 495, 496. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q08",
+      "question_fr": "Comment quelqu’un qui domine les autres peut-il néanmoins être qualifié d’impuissant ?",
+      "references": [
+        {
+          "pdf_page": 60,
+          "lecture_date": "1980-12-09"
+        },
+        {
+          "pdf_page": 61,
+          "lecture_date": "1980-12-09"
+        },
+        {
+          "pdf_page": 211,
+          "lecture_date": "1981-01-20"
+        }
+      ],
+      "annotation": "Paraphrase. La domination peut reposer sur la tristesse et l’impuissance; 211 distingue explicitement puissance et pouvoir. Cette distinction appartient au noyau proposé. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 63, 210, 290, 294, 495. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q09",
+      "question_fr": "Pourquoi la joie et la tristesse sont-elles définies par des variations de puissance ?",
+      "references": [
+        {
+          "pdf_page": 66,
+          "lecture_date": "1980-12-09"
+        },
+        {
+          "pdf_page": 67,
+          "lecture_date": "1980-12-09"
+        },
+        {
+          "pdf_page": 204,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 205,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 208,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 209,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 288,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 292,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Terminologie. La tristesse est reliée aux rapports incompatibles; les deux affects sont présentés comme directions de variation. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 68, 202, 203, 206, 210, 287. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q10",
+      "question_fr": "Peut-on se réjouir de ce qui arrive à quelqu’un que l’on déteste sans sortir d’une existence dominée par la tristesse ?",
+      "references": [
+        {
+          "pdf_page": 206,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 207,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 291,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 292,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Paraphrase et synthèse entre séances. La haine peut produire des joies compensatoires sans faire disparaître la tristesse sous-jacente; 207 précise cette compensation. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 212, 290, 294, 299. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q11",
+      "question_fr": "Qu’est-ce qu’une notion commune et pourquoi donne-t-elle une connaissance adéquate ?",
+      "references": [
+        {
+          "pdf_page": 303,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 304,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 305,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 306,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Terminologie. Composition des rapports et connaissance de la cause; 305 éclaire le caractère commun à la partie et au tout par les rapports entre chyle, lymphe et sang. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 297, 300, 302, 307, 308, 313, 314, 447, 448, 451, 478, 507. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q12",
+      "question_fr": "Pourquoi l’apprentissage des notions communes commence-t-il par les moins universelles ?",
+      "references": [
+        {
+          "pdf_page": 306,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 307,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 308,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Terminologie. 306 ouvre l’ordre déductif depuis les notions les plus universelles; 307–308 le distinguent de l’ordre pratique de formation. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 302, 304. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q13",
+      "question_fr": "Pourquoi apprendre à nager ne consiste-t-il pas simplement à subir les effets de l’eau sur soi ?",
+      "references": [
+        {
+          "pdf_page": 297,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 298,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 300,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 449,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 450,
+          "lecture_date": "1981-03-17"
+        }
+      ],
+      "annotation": "Paraphrase et synthèse entre séances. Ces pages développent la nage comme apprentissage de la composition des rapports. 303 ne développe pas cet exemple. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 296, 301, 308, 309, 448. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q14",
+      "question_fr": "Comment Deleuze distingue-t-il les trois genres de connaissance ?",
+      "references": [
+        {
+          "pdf_page": 314,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 444,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 446,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 447,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 450,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 451,
+          "lecture_date": "1981-03-17"
+        }
+      ],
+      "annotation": "Terminologie. Récapitulation des signes, des notions communes et des essences singulières. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 2, 241, 303, 445, 448, 449, 461, 512, 513, 514, 515, 516. Hors des références numériques et des scores actuels. En particulier, 2 et 512–516 peuvent être périphériques.",
+      "status": "proposed"
+    },
+    {
+      "id": "q15",
+      "question_fr": "Que connaît-on dans le troisième genre que la connaissance des rapports ne donne pas encore ?",
+      "references": [
+        {
+          "pdf_page": 313,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 314,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 451,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 477,
+          "lecture_date": "1981-03-17"
+        }
+      ],
+      "annotation": "Terminologie et synthèse entre séances. Dépassement des rapports vers les essences et degrés singuliers de puissance. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 415, 439, 457, 464, 465, 473, 479, 480, 507, 510, 511, 516. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q16",
+      "question_fr": "Quel rôle joue l’idée de Dieu dans le passage du deuxième au troisième genre de connaissance ?",
+      "references": [
+        {
+          "pdf_page": 478,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 479,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 480,
+          "lecture_date": "1981-03-17"
+        }
+      ],
+      "annotation": "Terminologie. Deux faces de l’idée de Dieu, fondement des rapports puis essence contenant les essences. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 223, 224, 481, 482, 487, 510. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q17",
+      "question_fr": "Pourquoi ne naît-on pas libre et comment peut-on le devenir ?",
+      "references": [
+        {
+          "pdf_page": 228,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 229,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 230,
+          "lecture_date": "1981-01-20"
+        }
+      ],
+      "annotation": "Paraphrase. 228 ouvre l’argument : devenir libre suppose un apprentissage expérimental de la sélection et de la composition, développé en 229–230. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 80, 227, 231, 233, 234, 251, 252, 296, 300. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q19",
+      "question_fr": "Que signifie le parallélisme du corps et de l’âme chez Spinoza ?",
+      "references": [
+        {
+          "pdf_page": 17,
+          "lecture_date": "1980-12-02"
+        },
+        {
+          "pdf_page": 18,
+          "lecture_date": "1980-12-02"
+        },
+        {
+          "pdf_page": 19,
+          "lecture_date": "1980-12-02"
+        },
+        {
+          "pdf_page": 104,
+          "lecture_date": "1981-01-06",
+          "annotation": "Groupe de pages équivalentes proposé : {104, 111}. Seule la première page est enregistrée; les alternatives ne sont pas reconnues par le scoreur actuel."
+        },
+        {
+          "pdf_page": 106,
+          "lecture_date": "1981-01-06",
+          "annotation": "Groupe de pages équivalentes proposé : {106, 113}. Seule la première page est enregistrée; les alternatives ne sont pas reconnues par le scoreur actuel."
+        },
+        {
+          "pdf_page": 107,
+          "lecture_date": "1981-01-06",
+          "annotation": "Groupe de pages équivalentes proposé : {107, 114}. Seule la première page est enregistrée; les alternatives ne sont pas reconnues par le scoreur actuel."
+        }
+      ],
+      "annotation": "Terminologie. Même modification sous deux attributs, rapports corporels et perceptions. Groupes équivalents proposés : {104, 111}, {106, 113}, {107, 114}. Premières pages seules dans les références; équivalences non interprétées par le scoreur. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 15, 20, 105/112, 108/114/115, 116, 117, 119. Hors des références numériques et des scores actuels. Chevauchement à arbitrer : 114 appartient au groupe du noyau {107, 114} et au groupe d’appui secondaire {108, 114, 115}; aucune règle de priorité ni fusion automatique appliquée.",
+      "status": "proposed"
+    },
+    {
+      "id": "q20",
+      "question_fr": "Pourquoi n’a-t-on pas à expliquer comment l’esprit serait uni à un corps séparé de lui ?",
+      "references": [
+        {
+          "pdf_page": 17,
+          "lecture_date": "1980-12-02"
+        },
+        {
+          "pdf_page": 18,
+          "lecture_date": "1980-12-02"
+        },
+        {
+          "pdf_page": 104,
+          "lecture_date": "1981-01-06",
+          "annotation": "Groupe de pages équivalentes proposé : {104, 111}. Seule la première page est enregistrée; les alternatives ne sont pas reconnues par le scoreur actuel."
+        }
+      ],
+      "annotation": "Paraphrase. L’identité de la modification sous deux attributs déplace le problème de l’union. Groupe équivalent proposé : {104, 111}. Première page seule dans les références; équivalence non interprétée par le scoreur. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 19. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q21",
+      "question_fr": "Quel rapport y a-t-il entre la complexité des relations corporelles et ce que l’on perçoit ?",
+      "references": [
+        {
+          "pdf_page": 106,
+          "lecture_date": "1981-01-06",
+          "annotation": "Groupe de pages équivalentes proposé : {106, 113}. Seule la première page est enregistrée; les alternatives ne sont pas reconnues par le scoreur actuel."
+        },
+        {
+          "pdf_page": 107,
+          "lecture_date": "1981-01-06",
+          "annotation": "Groupe de pages équivalentes proposé : {107, 114}. Seule la première page est enregistrée; les alternatives ne sont pas reconnues par le scoreur actuel."
+        },
+        {
+          "pdf_page": 108,
+          "lecture_date": "1981-01-06",
+          "annotation": "Groupe de pages équivalentes proposé : {108, 114, 115}. Seule la première page est enregistrée; les alternatives ne sont pas reconnues par le scoreur actuel."
+        }
+      ],
+      "annotation": "Paraphrase. Complexité des rapports corporels et perceptions. Groupes équivalents proposés : {106, 113}, {107, 114}, {108, 114, 115}. Premières pages seules dans les références. 114 apparaît dans deux groupes; la future règle devra préciser si une page peut satisfaire plusieurs unités de preuve. Les groupes et grades sont ignorés par le scoreur actuel. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 116, 117, 121, 445, 446, 502, 503. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q22",
+      "question_fr": "Comment relier la persévérance dans l’être à l’effort de la raison pour sélectionner les rencontres ?",
+      "references": [
+        {
+          "pdf_page": 70,
+          "lecture_date": "1980-12-16"
+        },
+        {
+          "pdf_page": 95,
+          "lecture_date": "1981-01-06"
+        },
+        {
+          "pdf_page": 229,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 230,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 233,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 293,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Synthèse entre séances. Effectuation de la puissance et conatus de la raison comme apprentissage des rapports. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 92, 93, 120, 231, 234, 290, 295. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q23",
+      "question_fr": "Comment des rencontres joyeuses peuvent-elles conduire à des idées adéquates et à des affects actifs ?",
+      "references": [
+        {
+          "pdf_page": 222,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 295,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 296,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 302,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 303,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 314,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Synthèse entre séances. Distinguer joie passive, possession de la puissance et accès au deuxième genre. 222 est maintenue après adjudication, malgré son absence de l’ensemble aveugle. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 288, 289, 292, 294, 297, 304, 306. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q24",
+      "question_fr": "Comment la distinction entre affection instantanée et affect comme passage est-elle reprise dans l’analyse des signes ?",
+      "references": [
+        {
+          "pdf_page": 198,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 286,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 287,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 288,
+          "lecture_date": "1981-02-03"
+        }
+      ],
+      "annotation": "Synthèse entre séances. Terminologie de janvier et reprise en février comme signes de variation. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 199, 201, 275, 276, 289, 294. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q25",
+      "question_fr": "Comment l’apprentissage de ce qui nous convient relie-t-il liberté, notions communes et manière de vivre ?",
+      "references": [
+        {
+          "pdf_page": 229,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 230,
+          "lecture_date": "1981-01-20"
+        },
+        {
+          "pdf_page": 298,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 300,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 303,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 307,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 450,
+          "lecture_date": "1981-03-17"
+        }
+      ],
+      "annotation": "Synthèse entre séances. Sélection pratique, formation des notions communes moins universelles et composition vécue des rapports. 450 est maintenue après adjudication, malgré son absence de l’ensemble aveugle. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 231, 233, 234, 252, 297, 302, 305, 448, 449, 451. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    },
+    {
+      "id": "q26",
+      "question_fr": "Pourquoi connaître ce qui se compose entre plusieurs corps ne suffit-il pas à connaître ce que chacun est singulièrement ?",
+      "references": [
+        {
+          "pdf_page": 313,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 314,
+          "lecture_date": "1981-02-03"
+        },
+        {
+          "pdf_page": 451,
+          "lecture_date": "1981-03-17"
+        },
+        {
+          "pdf_page": 477,
+          "lecture_date": "1981-03-17"
+        }
+      ],
+      "annotation": "Paraphrase et synthèse entre séances. 313 distingue la généralité d’une notion commune de l’abstraction et précise qu’elle ne donne pas une essence; 314 et 451 développent les essences singulières. 479 porte sur le passage entre genres, traité par q16. Appuis secondaires candidats (confiance moindre, non vérifiés systématiquement) : 317, 415, 478, 479, 481, 482. Hors des références numériques et des scores actuels.",
+      "status": "proposed"
+    }
+  ]
+}
