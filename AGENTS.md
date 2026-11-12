@@ -103,13 +103,47 @@ uv build --no-sources
 
 - Use Ruff as the single Python linter and formatter; follow pyproject.toml.
 - Use type hints for public function signatures.
-- Write concise English docstrings following PEP 257 and Google style.
-- Document public modules, classes, and functions, emphasizing contracts,
-  side effects, and non-obvious decisions. Avoid boilerplate and repeated types.
-- Use Args, Returns, Raises, and Yields sections where useful.
-- Application modules start with a module docstring. Tests and package
-  __init__.py files are exempt from mandatory docstrings.
-- Keep documentation synchronized with behavior.
+
+## Docstrings and comments
+
+Docstrings follow PEP 257 and Google style, enforced by Ruff's D rules.
+
+- Document every application module, public class, and public function, and
+  any private helper that is nontrivial or encodes an invariant (identity
+  hashing, verification, publication). Package __init__.py files and test
+  modules need no docstring.
+- Write a one-line summary in the imperative mood ("Return ...", not
+  "Returns ..."), ending with a period. Properties use attribute style
+  ("The index path.").
+- Describe the contract: behavior, side effects (files written, network calls,
+  mutation), and constraints. Leave out implementation details unless they
+  affect callers, and never restate the signature or the name.
+- Add Args, Returns, Yields, or Raises sections only when they add
+  information. Never repeat annotated types. Omit Returns when the summary
+  states the result. Under Raises, list exceptions callers should handle, not
+  ones caused by misuse.
+- A class docstring says what an instance represents; document public
+  attributes when they are not obvious.
+- Update docstrings and comments in the same change as the behavior.
+
+Comments:
+
+- Explain why, not what: rationale, constraints, invariants, and surprising
+  choices. Link a docs/knowledge entry for workarounds. Never restate the code.
+- Prefer a clearer name or a small function over a comment that explains
+  confusing code.
+- Write complete English sentences, with block comments above the code they
+  describe. Use inline comments sparingly.
+- Delete code instead of commenting it out (Ruff ERA001). A TODO needs a
+  reference and an action: `# TODO(<issue or knowledge entry>): <action>`.
+
+Tests:
+
+- Test names state the behavior; never add a docstring that restates the name.
+- Add a docstring or comment only for intent the name cannot carry: the
+  invariant protected, a regression's origin, an unusual setup, or why a
+  side effect proves the goal.
+- Give shared fixtures in conftest.py a docstring; `pytest --fixtures` shows it.
 
 ## Git and commit conventions
 

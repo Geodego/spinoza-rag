@@ -53,6 +53,8 @@ select = [
     "UP",  # Modern Python syntax
     "B",   # Common bug patterns
     "D",   # Docstring conventions
+    "D401",  # Imperative summary lines; the google convention disables it
+    "ERA",  # No commented-out code
     "PT",  # pytest style: precise raises, single assertions, parametrize names
 ]
 ignore = [
