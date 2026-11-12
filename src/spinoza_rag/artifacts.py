@@ -37,7 +37,8 @@ def publish_artifacts(output_dir: Path, artifacts: dict[str, bytes]) -> None:
         ):
             return
         raise FileExistsError(
-            f"{output_dir} already exists with different or incomplete contents; choose a new --output-dir. Existing files were preserved."
+            f"{output_dir} already exists with different or incomplete contents; "
+            "choose a new --output-dir. Existing files were preserved."
         )
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(

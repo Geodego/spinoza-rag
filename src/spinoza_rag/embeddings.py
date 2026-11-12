@@ -42,7 +42,8 @@ class OllamaClient:
             or parsed.fragment
         ):
             raise ValueError(
-                "Ollama URL must be an HTTP loopback address without a path or credentials."
+                "Ollama URL must be an HTTP loopback address "
+                "without a path or credentials."
             )
         if timeout <= 0 or not math.isfinite(timeout):
             raise ValueError("Ollama timeout must be positive and finite.")
@@ -65,7 +66,8 @@ class OllamaClient:
             raise ValueError(f"Ollama HTTP {error.code}: {detail}") from error
         except (URLError, TimeoutError, OSError) as error:
             raise ValueError(
-                f"Ollama is unavailable at {self.url}: {error}. Start Ollama and confirm the model is installed."
+                f"Ollama is unavailable at {self.url}: {error}. "
+                "Start Ollama and confirm the model is installed."
             ) from error
         except ValueError as error:
             raise ValueError(f"Invalid Ollama response: {error}") from error
@@ -77,7 +79,8 @@ class OllamaClient:
             model = next((item for item in models if item["name"] == self.model), None)
             if model is None:
                 raise ValueError(
-                    f"Ollama model {self.model!r} is not installed; run: ollama pull {self.model}"
+                    f"Ollama model {self.model!r} is not installed; "
+                    f"run: ollama pull {self.model}"
                 )
             return {
                 "model": self.model,

@@ -46,6 +46,7 @@ line-length = 88
 [tool.ruff.lint]
 select = [
     "E4",  # Import errors
+    "E501",  # Line length; the formatter does not split long strings or comments
     "E7",  # Syntax and statement conventions
     "E9",  # Runtime and syntax errors
     "F",   # Pyflakes

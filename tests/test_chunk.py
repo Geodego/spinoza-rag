@@ -48,7 +48,8 @@ def test_lecture_boundaries_inside_pages_are_not_misattributed(pipeline):
             "02.12.1980\n\nUne première leçon.",
             "Fin de la première leçon.\n\n09.12.1980\n\nDébut de la deuxième leçon.",
             "Suite de la deuxième leçon.",
-            "Table des matières\n\n02.12.1980...... 1\n09.12.1980...... 2\n16.12.1980...... 9",
+            "Table des matières\n\n"
+            "02.12.1980...... 1\n09.12.1980...... 2\n16.12.1980...... 9",
         ]
     )
     second = [row for row in data.rows if row["page_start"] == 2]
@@ -70,7 +71,8 @@ def test_lecture_boundaries_inside_pages_are_not_misattributed(pipeline):
 def test_normalization_only_removes_matching_edge_page_number():
     assert (
         normalize_page(
-            " 2\n\nLe corps    peut agir.\nUne seconde ligne.\n\nUn autre paragraphe.\n2",
+            " 2\n\nLe corps    peut agir.\nUne seconde ligne.\n\n"
+            "Un autre paragraphe.\n2",
             2,
         )
         == "Le corps peut agir. Une seconde ligne.\n\nUn autre paragraphe."

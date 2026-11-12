@@ -362,7 +362,8 @@ def _load_existing_extraction(
         return report
     except ValueError as error:
         raise FileExistsError(
-            f"{output_dir} cannot be reused ({error}); choose a new --output-dir. Existing files were preserved."
+            f"{output_dir} cannot be reused ({error}); choose a new --output-dir. "
+            "Existing files were preserved."
         ) from error
 
 
@@ -446,7 +447,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     summary = report["summary"]
     print(json.dumps(summary, sort_keys=True))
     print(
-        f"Artifacts: {args.output_dir / 'pages.jsonl'} and {args.output_dir / 'report.json'}"
+        f"Artifacts: {args.output_dir / 'pages.jsonl'} and "
+        f"{args.output_dir / 'report.json'}"
     )
     if summary["failed_pages"] or not summary["pages_with_text"]:
         print(

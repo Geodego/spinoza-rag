@@ -97,7 +97,8 @@ def _verify_collection(
         or (collection.configuration_json.get("hnsw") or {}).get("space") != "cosine"
     ):
         raise ValueError(
-            "Incompatible Chroma collection metadata or distance metric; choose a new --index-dir."
+            "Incompatible Chroma collection metadata or distance metric; "
+            "choose a new --index-dir."
         )
     expected = {row["chunk_id"]: row for row in rows}
     saved = collection.get(include=["documents", "metadatas"])
@@ -110,7 +111,8 @@ def _verify_collection(
             or metadata != _metadata(expected[identifier], source)
         ):
             raise ValueError(
-                "Chroma contains unexpected or modified records; choose a new --index-dir."
+                "Chroma contains unexpected or modified records; "
+                "choose a new --index-dir."
             )
     present = set(saved["ids"])
     if complete and present != set(expected):
@@ -203,7 +205,8 @@ def index_chunks(
                 for vector in vectors
             ):
                 raise ValueError(
-                    "Invalid or inconsistent embedding dimensions; index remains resumable."
+                    "Invalid or inconsistent embedding dimensions; "
+                    "index remains resumable."
                 )
             manifest["dimensions"] = dimensions
             collection.upsert(
@@ -217,7 +220,9 @@ def index_chunks(
             started = time.perf_counter()
             if progress:
                 progress(
-                    f"Indexed {len(present) + min(offset + batch_size, len(missing))}/{len(rows)} chunks"
+                    "Indexed "
+                    f"{len(present) + min(offset + batch_size, len(missing))}"
+                    f"/{len(rows)} chunks"
                 )
         _verify_collection(
             collection, rows, chunks_manifest["source"], fingerprint, complete=True
@@ -256,7 +261,8 @@ def open_index(
     )
     if manifest["configuration"] != configuration:
         raise ValueError(
-            "Stale or incompatible index/model configuration; rebuild in a new --index-dir."
+            "Stale or incompatible index/model configuration; "
+            "rebuild in a new --index-dir."
         )
     client = _client(index_dir / "chroma")
     try:

@@ -93,7 +93,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         for rank, item in enumerate(results, start=1):
             metadata = item["metadata"]
             print(
-                f"\n[{rank}] {metadata['source_file']} | PDF pp. {metadata['page_start']}–{metadata['page_end']} | lecture: {metadata.get('lecture_date', 'unknown')} | cosine distance: {item['distance']:.4f}"
+                f"\n[{rank}] {metadata['source_file']} | "
+                f"PDF pp. {metadata['page_start']}–{metadata['page_end']} | "
+                f"lecture: {metadata.get('lecture_date', 'unknown')} | "
+                f"cosine distance: {item['distance']:.4f}"
             )
             print(f"Chunk: {item['chunk_id']}\n{item['text']}")
     except (

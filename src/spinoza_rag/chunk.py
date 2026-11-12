@@ -155,7 +155,8 @@ def chunk_pages(
             or manifest["pages_sha256"] != extraction["pages_jsonl_sha256"]
         ):
             raise ValueError(
-                "Existing chunks have different source/settings; choose a new --output-dir."
+                "Existing chunks have different source/settings; "
+                "choose a new --output-dir."
             )
         return rows, manifest
     tokenizer = Tokenizer.from_str(tokenizer_data.decode("utf-8"))
