@@ -8,8 +8,6 @@ A fully local research CLI for Gilles Deleuze's lectures on Spinoza. Ask a
 question in French and inspect retrieved passages or request a bounded answer
 with source labels, PDF pages and lecture metadata.
 
-Retrieval and a bounded local answer agent are implemented; the first
-human-validated partial retrieval baseline is measured.
 Everything runs on one machine: no cloud services, no paid APIs, and the corpus
 never leaves the disk.
 
@@ -35,29 +33,43 @@ because the transcripts are not distributed with this repository.
 
 ## How it works
 
+**1. Build the index (offline, once).** Each stage is a separate command that
+reads the previous stage's persisted artifacts.
+
 ```mermaid
 flowchart LR
-    subgraph offline["Offline ingestion (run once)"]
-        A[PDF] -->|pypdf, layout mode| B[pages.jsonl<br/>+ report.json]
-        B -->|Qwen tokenizer,<br/>LangChain splitter| C[chunks.jsonl<br/>+ manifest.json]
-        C -->|Ollama<br/>qwen3-embedding:0.6b| D[(Chroma index<br/>cosine)]
-    end
-    subgraph query["Question time"]
-        Q[Question] -->|embed question only| D
-        D --> R[Passages + page<br/>and lecture citations]
-        R -->|answer mode, bounded tool loop| L[Ollama qwen3:8b answer]
-    end
+    A[/"PDF"/] -->|"ingest<br/>pypdf, layout mode"| B["Pages<br/>one record per PDF page"]
+    B -->|"chunk<br/>450 tokens max,<br/>never across pages"| C["Chunks<br/>with page and lecture date"]
+    C -->|"index<br/>qwen3-embedding:0.6b<br/>via Ollama"| D[("Chroma index<br/>cosine")]
 ```
 
-Each stage is a separate command that reads the previous stage's persisted
-artifacts. Search reopens the index and embeds only the question; it never
-reprocesses the PDF or recomputes document embeddings.
+**2. Answer a question.** Retrieval is the agent's only tool: the chat model
+chooses its own queries and calls `search_spinoza` through tool calling
+(function calling).
 
-In answer mode, retrieval is the agent's only tool: the chat model calls
-`search_spinoza` through tool calling (function calling), chooses its own
-queries, and may search at most twice. The tool is an in-process Python
-function over the same search path. No Model Context Protocol (MCP) server or
-client is involved; see the [agent workflow](docs/agent-workflow.md).
+```mermaid
+sequenceDiagram
+    actor U as You
+    participant A as Answer agent<br/>qwen3:8b via Ollama
+    participant T as search_spinoza<br/>the agent's only tool
+    participant I as Chroma index
+    U->>A: Question in French
+    loop At most 2 searches
+        A->>T: Tool call with a query the model chose
+        T->>I: Embed the query, find nearest chunks
+        I-->>T: Passages with page and lecture date
+        T-->>A: Passages labelled S1, S2, ...
+    end
+    A->>A: Draft answer citing [S1], [S2]
+    Note over A,T: Python checks that every citation<br/>resolves to a passage the model received
+    A-->>U: Answer with its sources, or draft withheld
+```
+
+Search embeds only the question; it never reprocesses the PDF or recomputes
+document embeddings. The `search` and `research context` commands run the same
+search without a chat model and print the passages. The tool is an in-process
+Python function: no Model Context Protocol (MCP) server or client is involved.
+See the [agent workflow](docs/agent-workflow.md).
 
 Key design decisions:
 
@@ -77,11 +89,9 @@ Key design decisions:
 - **Layout-mode extraction is the default.** Plain extraction split words
   apart on sampled pages; layout mode fixed them. Both remain reproducible.
 
-Research commands: [local research agent](docs/research-agent.md);
-how a run works: [agent workflow](docs/agent-workflow.md).
-
 Details: [PDF extraction](docs/ingestion.md) ·
 [chunking, indexing, and search](docs/indexing-and-search.md) ·
+[research commands](docs/research-agent.md) ·
 [configuration](docs/configuration.md).
 
 ## Quickstart
@@ -152,17 +162,22 @@ On the current local PDF (531 pages, 13 lecture dates):
   under a second with nothing re-embedded. The index occupies about 21 MB.
 - **Search:** about 0.9 s per question after startup, embedding exactly one
   text.
-- **Informal spot checks:** four of six French questions returned on-topic
-  passages in the top three, with cosine distances of 0.13–0.25. Questions on
-  *conatus* and *puissance/pouvoir* were weaker. Every returned passage was
-  verified to appear on its cited page.
+- **Retrieval baseline** (2026-11-12): ten human-validated questions, exact
+  PDF pages, 50 candidate chunks per question; fifteen proposed questions are
+  excluded.
 
-Those spot checks are informal. The first official partial baseline uses ten
-human-validated questions and excludes fifteen proposed questions. Its metrics,
-per-question failures and frozen configuration are documented in the
-[retrieval evaluation](docs/evaluation.md#first-official-partial-baseline).
-Finding one relevant page does not establish complete answer support.
-The targeted retrieval follow-up is [deferred](docs/future-improvements.md).
+| Top k pages | Hit@k | Support recall@k | MRR@k |
+| --- | --- | --- | --- |
+| 1 | 80% | 21% | 0.80 |
+| 3 | 100% | 41% | 0.88 |
+| 5 | 100% | 48% | 0.88 |
+| 10 | 100% | 64% | 0.88 |
+
+Hit needs only one approved page; recall is the share of approved pages
+retrieved. Finding one relevant page does not establish complete answer
+support. Per-question failures and the frozen configuration are in the
+[retrieval evaluation](docs/evaluation.md#first-official-partial-baseline);
+the targeted follow-up is [deferred](docs/future-improvements.md).
 Reviewed answer runs, with timings and unsupported claims, are recorded in the
 [answer review log](docs/answer-review.md).
 
@@ -183,22 +198,16 @@ Reviewed answer runs, with timings and unsupported claims, are recorded in the
 **Work in progress.** Implemented: page-aware PDF extraction with diagnostics,
 token-aware chunking, local Ollama embeddings, resumable Chroma indexing,
 retrieval-only search, a reproducible evaluation CLI, and a bounded French
-answer agent using LangChain create_agent backed by LangGraph. Synthetic tests cover
-page metrics, annotation status, persistence, restart,
-compatibility checks, errors, and the guarantee that search never re-embeds
-documents.
-
-The evaluation framework, human validation of the pilot subset, and first
-official partial baseline are complete. See
-[current status and next steps](docs/evaluation.md#current-status-and-next-steps).
+answer agent using LangChain create_agent backed by LangGraph. Synthetic tests
+cover page metrics, annotation status, persistence, restart, compatibility
+checks, errors, and the guarantee that search never re-embeds documents.
 
 Adjacent-page context, reranking, and equivalent-page or graded scoring are
 deferred. Their hypotheses and criteria for resuming are recorded in
 [later improvements](docs/future-improvements.md).
 
-Use the [local research CLI](docs/research-agent.md) for context-only retrieval
-or agent answers. A web interface, multi-agent system, persistent memory and
-MCP integration remain out of scope.
+A web interface, multi-agent system, persistent memory and MCP integration
+remain out of scope.
 
 ## Technology
 

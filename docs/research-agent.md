@@ -115,8 +115,9 @@ Tracked documentation contains questions and metadata, never corpus quotations.
 
 ## How it works
 
-The [agent workflow](agent-workflow.md) describes each step of a run, the
-components and versions involved, the search and evidence limits, the answer
-checks, every event, privacy controls, and design tradeoffs. Centralized
+The [agent workflow](agent-workflow.md) describes the graph and its two
+nodes, the routing between them, the state, the `search_spinoza` retrieval
+tool, each step of a run, the answer checks, every event, privacy controls,
+and design tradeoffs. Centralized
 model, question, output, and evidence budgets are listed in
 [configuration](configuration.md#local-chat-and-evidence-defaults).
