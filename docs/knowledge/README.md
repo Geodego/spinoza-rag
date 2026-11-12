@@ -9,6 +9,7 @@ way they do.
 
 | Entry | Technology | Symptom or trigger |
 | --- | --- | --- |
+| [Exact refusals absorb nearby prompt text](agent-refusal-boundary.md) | Ollama, agent prompts | Safe refusal rejected by the uncited-answer guard; exact output instructions share a line with a caution |
 | [Chroma pulls an ONNX Runtime without Intel macOS wheels](chroma-onnxruntime-intel-macos.md) | uv, chromadb, onnxruntime | `onnxruntime` "doesn't have a source distribution or wheel for the current platform"; changing `[tool.uv]` settings, relaxing a bound that `uv lock` ignores, or upgrading Chroma |
 | [Python skips hidden .pth files](python-hidden-pth.md) | Python, uv, macOS | Editable import fails in subprocesses despite a correct `.pth`; `hidden` flag on the worktree environment |
 | [Non-editable sync installs a stale wheel](uv-stale-local-wheel.md) | uv, packaging | `ModuleNotFoundError` for a module that exists in `src/`, only with `--no-editable`; changing `[tool.uv] cache-keys` |

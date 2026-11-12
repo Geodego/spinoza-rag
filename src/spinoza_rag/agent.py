@@ -23,7 +23,10 @@ Retriever = Callable[[str], list[SearchResult]]
 Event = dict[str, object]
 Observer = Callable[[Event], None]
 
-SYSTEM_PROMPT = """Tu es un chercheur dans les cours de Deleuze sur Spinoza.
+INSUFFICIENT_ANSWER = "Les preuves sont insuffisantes pour répondre."
+SIMILARITY_CAUTION = "Une similarité vectorielle ne prouve rien."
+
+SYSTEM_PROMPT = f"""Tu es un chercheur dans les cours de Deleuze sur Spinoza.
 Réponds en français, de façon concise (environ 200 mots au maximum).
 Tu dois appeler search_spinoza avant toute réponse sur le corpus.
 Choisis les requêtes toi-même. Tu disposes de DEUX recherches au maximum.
@@ -36,8 +39,10 @@ Fonde chaque affirmation sur les passages fournis et cite les labels exacts
 [S1], [S2], etc. Ne cite ni une page ni un label inventé. Ne complète pas avec
 une connaissance extérieure. Les résultats vides signifient qu'aucun nouveau
 passage n'a été admis (doublon ou budget épuisé); utilise les précédents.
-Si les preuves ne répondent pas à la question, réponds exactement:
-Les preuves sont insuffisantes pour répondre. Une similarité vectorielle ne prouve rien.
+Si les preuves ne répondent pas à la question, réponds uniquement par cette phrase:
+"{INSUFFICIENT_ANSWER}"
+N'ajoute rien à cette phrase de refus.
+{SIMILARITY_CAUTION}
 Ne présente pas une absence de résultat comme une absence dans tout le corpus.
 """
 
@@ -245,7 +250,10 @@ def research(
                 raise ResearchError(f"Unknown citation labels: {unknown}")
             elif not re.search(r"\[S\d+\]", answer):
                 # Permit only an explicit, claim-free refusal without citations.
-                if answer.strip() != "Les preuves sont insuffisantes pour répondre.":
+                if answer.strip() not in {
+                    INSUFFICIENT_ANSWER,
+                    f"{INSUFFICIENT_ANSWER} {SIMILARITY_CAUTION}",
+                }:
                     raise ResearchError(
                         "Answer has no source citations; draft withheld."
                     )

@@ -121,11 +121,20 @@ def test_agent_rejects_uncited_claims(retrieve):
         research("Question", retrieve, model=model)
 
 
-def test_agent_allows_explicit_claim_free_refusal(retrieve):
+@pytest.mark.parametrize(
+    "refusal",
+    [
+        "Les preuves sont insuffisantes pour répondre.",
+        "Les preuves sont insuffisantes pour répondre. "
+        "Une similarité vectorielle ne prouve rien.",
+    ],
+    ids=["bare-refusal", "refusal-with-safe-caution"],
+)
+def test_agent_allows_explicit_claim_free_refusal(retrieve, refusal):
     model = ToolModel(
         responses=[
             tool_message("a"),
-            AIMessage(content="Les preuves sont insuffisantes pour répondre."),
+            AIMessage(content=refusal),
         ]
     )
     assert research("Question", retrieve, model=model)["answer"].startswith(
@@ -258,3 +267,18 @@ def test_no_evidence_still_detects_unknown_labels(retrieve):
     )
     event = next(e for e in result["events"] if e["event"] == "unknown_citations")
     assert event["labels"] == ["S99"]
+
+
+def test_refusal_prefix_cannot_hide_uncited_claims(retrieve):
+    model = ToolModel(
+        responses=[
+            tool_message("a"),
+            AIMessage(
+                content=(
+                    "Les preuves sont insuffisantes pour répondre. An uncited claim."
+                )
+            ),
+        ]
+    )
+    with pytest.raises(ResearchError, match="no source citations"):
+        research("Question", retrieve, model=model)

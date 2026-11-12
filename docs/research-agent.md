@@ -66,9 +66,12 @@ of insufficient evidence, and forbids outside knowledge. `ChatOllama` sets
 
 The application withholds unsupported drafts when no evidence was admitted,
 rejects unknown source labels, uncited substantive output and final responses
-marked `done_reason=length`. Without citations, only the exact claim-free refusal
-`Les preuves sont insuffisantes pour répondre.` is accepted. A failure produces
-an actionable error and a nonzero CLI status. Tool retrieval failures are visible
+marked `done_reason=length`. Without citations, accept only the exact claim-free
+refusal `Les preuves sont insuffisantes pour répondre.`, optionally followed by
+the fixed methodological caution `Une similarité vectorielle ne prouve rien.`.
+Other text following a refusal still requires citations. The prompt quotes the
+refusal separately; see [the regression diagnosis](knowledge/agent-refusal-boundary.md).
+A failure produces an actionable error and a nonzero CLI status. Tool retrieval failures are visible
 and consume a slot; the model can try once more or acknowledge insufficient
 proof. A no-evidence run returns a fixed French insufficient-evidence message.
 
