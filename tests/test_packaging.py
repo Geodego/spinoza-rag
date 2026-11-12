@@ -1,9 +1,8 @@
 import subprocess
 import sys
-from pathlib import Path
 
 
-def test_package_imports_outside_repository(tmp_path: Path) -> None:
+def test_package_imports_outside_repository(tmp_path):
     result = subprocess.run(
         [
             sys.executable,

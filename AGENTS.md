@@ -54,7 +54,11 @@ uv build --no-sources
 - Commit pyproject.toml and uv.lock together when dependencies change.
 - Use `uv add` / `uv add --dev` to change dependencies; do not hand-edit uv.lock.
 - Use `uv lock --upgrade-package <name>` for intentional, focused updates.
-- Put application code in src/spinoza_rag/ and tests in tests/.
+- Put application code in src/spinoza_rag/ and tests in tests/, one test file
+  per module (tests/test_<module>.py). Share fixtures through tests/conftest.py;
+  under importlib mode, tests cannot import helper modules without path hacks.
+- Keep one behavior per test, use `match=` with `pytest.raises`, and
+  parametrize with named case functions or `ids=` instead of if/elif chains.
 - Test installed imports; do not add sys.path or PYTHONPATH workarounds.
 - Unit tests must run without Ollama, model downloads, or the real corpus.
 - Add synthetic behavior tests with features. Tests cover PDF ingestion, chunking,
