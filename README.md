@@ -5,37 +5,89 @@
 ![Runs locally](https://img.shields.io/badge/inference-local%20%28Ollama%29-informational)
 ![Agent: LangChain + LangGraph](https://img.shields.io/badge/agent-LangChain%20%2B%20LangGraph-informational)
 
-A fully local research CLI for Gilles Deleuze's lectures on Spinoza. Ask a
-question in French and inspect retrieved passages or request a bounded answer
-with source labels, PDF pages and lecture metadata.
+A local research agent for Gilles Deleuze's lectures on Spinoza. Ask a question
+in French: the agent decides what to look up in the lecture transcripts, calls
+its retrieval tool, and writes a short answer whose citations each resolve to a
+PDF page and a lecture date. A draft that fails that check is withheld.
 
-Everything runs on one machine: no cloud services, no paid APIs, and the corpus
-never leaves the disk.
+The agent is a tool-calling loop built with LangChain `create_agent` on
+LangGraph. Its single tool, `search_spinoza`, is vector retrieval (RAG) over a
+Chroma index of the transcripts. Models run locally through Ollama: no cloud
+services, no paid APIs, and the corpus never leaves the disk.
 
 ```console
-$ uv run --locked python -m spinoza_rag.search \
-    "Quelle est la différence entre la joie et la tristesse ?" --top-k 3
-
-[1] spinoza.pdf | PDF pp. 66–66 | lecture: 1980-12-09 | cosine distance: 0.2094
-Chunk: sha256:970f14788f236f62…
-<passage text>
-
-[2] spinoza.pdf | PDF pp. 291–291 | lecture: 1981-02-03 | cosine distance: 0.2236
-Chunk: sha256:94d366d0384754a7…
-<passage text>
-
-[3] spinoza.pdf | PDF pp. 292–292 | lecture: 1981-02-03 | cosine distance: 0.2340
-Chunk: sha256:64bc8ddb65f6a70e…
-<passage text>
+$ uv run --locked python -m spinoza_rag.research answer \
+    'Selon les passages, quels éléments composent le premier genre de connaissance ? Limite la réponse à cette définition.' \
+    --top-k 1 --timeout 600
+{"event": "model_end", "call": 1, "tool_calls": [{"name": "search_spinoza", "args": {"query": "premier genre de connaissance"}}]}
+{"event": "search_start", "tool": "search_spinoza", "query": "premier genre de connaissance"}
+{"event": "search_end", "retrieved": 1, "admitted_labels": ["S1"], "evidence_bytes": 1792}
+{"event": "model_end", "call": 2, "prompt_seconds": 20.46, "generation_seconds": 10.78, "tool_calls": []}
+{
+  "answer": "<answer in French> [S1]",
+  "sources": [{"label": "S1", "chunk_id": "sha256:33d8ebfa605328f7…",
+    "metadata": {"source_file": "spinoza.pdf", "page_start": 314, "page_end": 314, "lecture_date": "1981-02-03"}}],
+  "evidence_bytes": 1792,
+  "elapsed_seconds": 45.27
+}
 ```
 
-The output is real; the passage text and the full chunk IDs are shortened here
-because the transcripts are not distributed with this repository.
+The trace is from a real run, shortened and rounded: the model writes its own
+query, receives one passage labelled `S1`, and cites it. The answer and passage
+are placeholders because the transcripts are not distributed with this repository.
 
-## How it works
+## How the agent works
 
-**1. Build the index (offline, once).** Each stage is a separate command that
-reads the previous stage's persisted artifacts.
+```mermaid
+flowchart LR
+    Q[/"Question<br/>in French"/] --> M
+    subgraph G["LangGraph graph compiled by create_agent"]
+        M["<b>model</b> node<br/>qwen3:8b via ChatOllama"]
+        T["<b>tools</b> node<br/>search_spinoza(query)"]
+        M -->|"tool calls, with queries<br/>the model wrote"| T
+        T -->|"passages labelled<br/>S1, S2, ..."| M
+    end
+    T <-->|"embed the query,<br/>nearest chunks"| I[("Chroma index")]
+    M -->|"no tool call:<br/>draft answer"| C{"Python checks:<br/>does every citation<br/>resolve?"}
+    C -->|yes| A[/"Answer, sources,<br/>and event trace"/]
+    C -->|no| W[/"Draft withheld"/]
+```
+
+`create_agent` compiles a graph with two nodes. `model` calls the chat model
+with the system prompt, the messages so far, and the tool schema; `tools` runs
+the requested searches. A conditional edge leaves `model` for `tools` when the
+reply holds tool calls and for the end when it holds none, so the model decides
+whether to search, with which query, and when to answer. Around that loop:
+
+- **Limits are enforced in code, not by the prompt.** The tool refuses a third
+  search, a `wrap_model_call` middleware fails the run at a fourth model call,
+  and the graph's recursion limit is a backstop. Parallel tool calls in one
+  model response share the same counters under a lock.
+- **One in-process tool.** `search_spinoza` is a `@tool` closure over the run's
+  session. Its schema reaches the model through Ollama tool calling (function
+  calling); no Model Context Protocol (MCP) server or client is involved.
+  Retrieval errors return to the model as JSON, not exceptions; the run continues.
+- **Evidence is tracked outside the graph state**, which holds only `messages`.
+  Admitted passages, their labels, the search counter, and the 8,000-byte
+  evidence budget live in a per-run Python object that the model cannot read
+  or reset. Passages are admitted whole or not at all.
+- **Answers are checked after the graph ends.** An unknown label, a truncated
+  reply, or a substantive answer without citations fails the run; only a fixed
+  refusal may go uncited. If no passage was admitted, a fixed
+  insufficient-evidence sentence replaces the draft.
+- **Every step emits an event.** The JSON lines above come from the middleware
+  and the tool, with Ollama's prompt and generation times kept separate. Hosted
+  tracing is disabled and requests go only to a loopback Ollama URL.
+- **Each question gets a fresh graph**: no checkpointer, store, or memory.
+
+`research context` and `search` run the same retrieval without a chat model and
+print the passages. Details: [agent workflow](docs/agent-workflow.md) (nodes,
+routing, state, checks, events) · [research commands](docs/research-agent.md).
+
+## The index behind the tool
+
+The tool embeds only the query. The index is built offline, once; each stage is
+a separate command that reads the previous stage's persisted artifacts.
 
 ```mermaid
 flowchart LR
@@ -44,68 +96,29 @@ flowchart LR
     C -->|"index<br/>qwen3-embedding:0.6b<br/>via Ollama"| D[("Chroma index<br/>cosine")]
 ```
 
-**2. Answer a question.** Retrieval is the agent's only tool: the chat model
-chooses its own queries and calls `search_spinoza` through tool calling
-(function calling).
-
-```mermaid
-sequenceDiagram
-    actor U as You
-    participant A as Answer agent<br/>qwen3:8b via Ollama
-    participant T as search_spinoza<br/>the agent's only tool
-    participant I as Chroma index
-    U->>A: Question in French
-    loop At most 2 searches
-        A->>T: Tool call with a query the model chose
-        T->>I: Embed the query, find nearest chunks
-        I-->>T: Passages with page and lecture date
-        T-->>A: Passages labelled S1, S2, ...
-    end
-    A->>A: Draft answer citing [S1], [S2]
-    Note over A,T: Python checks that every citation<br/>resolves to a passage the model received
-    A-->>U: Answer with its sources, or draft withheld
-```
-
-Search embeds only the question; it never reprocesses the PDF or recomputes
-document embeddings. The `search` and `research context` commands run the same
-search without a chat model and print the passages. The tool is an in-process
-Python function: no Model Context Protocol (MCP) server or client is involved.
-See the [agent workflow](docs/agent-workflow.md).
-
-Key design decisions:
-
-- **Page provenance is preserved end to end.** The document ID is the SHA-256
-  of the PDF bytes, and every chunk keeps its one-based PDF page. Chunks never
-  cross page boundaries, so citations are exact, at the cost of occasionally
-  splitting an argument across pages.
-- **Lecture dates are inferred from the text.** Standalone `DD.MM.YYYY`
-  headings become ISO lecture dates, and chunks never span two lectures.
+- **Page and lecture provenance is preserved end to end.** The document ID is
+  the SHA-256 of the PDF bytes, and chunks never cross a page or lecture
+  boundary, so citations are exact, at the cost of occasionally splitting an
+  argument. Lecture dates are inferred from standalone `DD.MM.YYYY` headings.
 - **Artifacts are fingerprinted and never silently reused when stale.** Each
   manifest binds its inputs, settings, tokenizer, and the exact Ollama model
-  digest. A changed setting requires a new output directory instead of mixing
-  incompatible vectors.
+  digest. A changed setting requires a new output directory.
 - **Indexing is resumable and idempotent.** Stable chunk IDs, upserts, and
-  per-batch checkpoints mean an interrupted build resumes only missing chunks,
-  and a complete rerun embeds nothing.
-- **Layout-mode extraction is the default.** Plain extraction split words
-  apart on sampled pages; layout mode fixed them. Both remain reproducible.
+  per-batch checkpoints mean an interrupted build resumes only missing chunks.
 
-Details: [PDF extraction](docs/ingestion.md) ·
-[chunking, indexing, and search](docs/indexing-and-search.md) ·
-[research commands](docs/research-agent.md) ·
-[configuration](docs/configuration.md).
+Details: [PDF extraction](docs/ingestion.md) · [chunking, indexing, and
+search](docs/indexing-and-search.md) · [configuration](docs/configuration.md).
 
 ## Quickstart
 
 ### Prerequisites
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) and Git 2.28 or
-  newer. The full pipeline is verified on macOS Intel with uv 0.12.1 and Python
-  3.12.13; CI runs the tests on Linux. If an old Git breaks the commit hooks, see
-  [development](docs/development.md#toolchain).
+  newer ([an older Git breaks the commit hooks](docs/development.md#toolchain)).
+  Verified on macOS Intel with uv 0.12.1 and Python 3.12.13; CI tests on Linux.
 - [Ollama](https://ollama.com/) running locally
-- About 650 MB for embeddings and tokenizer; answer mode also needs the
-  installed `qwen3:8b` model (about 5.2 GB)
+- About 650 MB for embeddings and tokenizer, and about 5.2 GB for the agent's
+  chat model, `qwen3:8b`
 - Your own lawfully obtained PDF of the lectures, placed at `data/spinoza.pdf`
   (no corpus is bundled; see [Corpus and licensing](#corpus-and-licensing))
 
@@ -116,7 +129,7 @@ git clone https://github.com/Geodego/spinoza-rag.git
 cd spinoza-rag
 uv sync --locked
 ollama pull qwen3-embedding:0.6b
-ollama pull qwen3:8b  # Required for answer mode
+ollama pull qwen3:8b  # Chat model for the agent
 mkdir -p models
 curl --fail --location \
   https://huggingface.co/Qwen/Qwen3-Embedding-0.6B/resolve/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/tokenizer.json \
@@ -124,48 +137,47 @@ curl --fail --location \
 shasum -a 256 models/qwen3-embedding-tokenizer.json
 ```
 
-The tokenizer SHA-256 must be
-`def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a`.
+The tokenizer SHA-256 must be `def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a`.
 Setup downloads packages, models, and tokenizer once; later commands never
 download models or call hosted APIs.
 
-### Run the pipeline
+### Build the index, then ask
 
 ```sh
 uv run --locked python -m spinoza_rag.ingest   # PDF -> storage/ingestion-layout/
 uv run --locked python -m spinoza_rag.chunk    # -> storage/chunks/
 uv run --locked python -m spinoza_rag.index    # -> storage/index/ (about 30 min, see Results)
-uv run --locked python -m spinoza_rag.search \
-  "Que sont les notions communes ?" --top-k 3
+Q='Selon les passages, quels éléments composent le premier genre de connaissance ? Limite la réponse à cette définition.'
+uv run --locked python -m spinoza_rag.research answer "$Q" --top-k 1 --timeout 600  # agent
+uv run --locked python -m spinoza_rag.research context "$Q" --top-k 1  # passages only
+uv run --locked python -m spinoza_rag.search "Que sont les notions communes ?" --top-k 3
 ```
 
-Each stage's default output is the next stage's default input. Every command
-accepts `--help`, and `python -m spinoza_rag.config` prints all defaults. Rerunning
-a stage with unchanged inputs verifies and reuses its artifacts.
-
-With the index ready, inspect evidence or request an answer:
-
-```sh
-uv run --locked python -m spinoza_rag.research context \
-  'Selon les passages, quels éléments composent le premier genre de connaissance ? Limite la réponse à cette définition.' --top-k 1
-uv run --locked python -m spinoza_rag.research answer \
-  'Selon les passages, quels éléments composent le premier genre de connaissance ? Limite la réponse à cette définition.' --top-k 1 --timeout 600
-```
-
-See [the agent guide](docs/research-agent.md) for output examples and failure handling.
+Each stage's default output is the next stage's default input, and rerunning a
+stage with unchanged inputs verifies and reuses its artifacts. Every command
+accepts `--help`; `python -m spinoza_rag.config` prints all defaults.
 
 ## Results
 
-On the current local PDF (531 pages, 13 lecture dates):
+**Agent runs.** Single runs on 2026-11-12 (macOS Intel, CPU inference), each
+reviewed by hand against the passages the agent admitted; not a benchmark.
 
-- **1,194 chunks**, median 299 tokens, capped at 450.
-- **Full index build:** 29 min 37 s on a macOS Intel machine (batch size 8); a rerun completes in
-  under a second with nothing re-embedded. The index occupies about 21 MB.
-- **Search:** about 0.9 s per question after startup, embedding exactly one
-  text.
-- **Retrieval baseline** (2026-11-12): ten human-validated questions, exact
-  PDF pages, 50 candidate chunks per question; fifteen proposed questions are
-  excluded.
+| Question | Searches | Time | Source review |
+| --- | --- | --- | --- |
+| Focused definition (example above) | 1 | 45 s | Answer supported by its cited passage |
+| Joy versus sadness | 1 | 99 s | Citation resolves; the passage ends before supporting one claim |
+| Two themes to relate | 2, in one model response | 103 s | Citations resolve; one claim contradicts its passage, one is misattributed |
+| Detail absent from the retrieved passage | 1 | 37 s | Exact insufficient-evidence refusal |
+| Off-corpus question | 0 | 7 s | Model skipped retrieval; draft withheld |
+
+The checks catch unresolved labels, not unsupported claims: synthesis beyond
+the evidence on broad questions is the main observed limitation. See the
+[answer review log](docs/answer-review.md).
+
+**Retrieval.** On the current local PDF (531 pages, 13 lecture dates): 1,194
+chunks, median 299 tokens; a full index build takes 29 min 37 s (a rerun
+re-embeds nothing) and a search about 0.9 s. Baseline of 2026-11-12 on ten
+human-validated questions, exact PDF pages, 50 candidate chunks per question:
 
 | Top k pages | Hit@k | Support recall@k | MRR@k |
 | --- | --- | --- | --- |
@@ -175,50 +187,36 @@ On the current local PDF (531 pages, 13 lecture dates):
 | 10 | 100% | 64% | 0.88 |
 
 Hit needs only one approved page; recall is the share of approved pages
-retrieved. Finding one relevant page does not establish complete answer
-support. Per-question failures and the frozen configuration are in the
-[retrieval evaluation](docs/evaluation.md#first-official-partial-baseline);
-the targeted follow-up is [deferred](docs/future-improvements.md).
-Reviewed answer runs, with timings and unsupported claims, are recorded in the
-[answer review log](docs/answer-review.md).
+retrieved, so a hit does not establish complete answer support. Details:
+[retrieval evaluation](docs/evaluation.md#first-official-partial-baseline).
 
 ### Limitations
 
-- The official baseline is a small, deliberately selected partial set; its
-  exact-page metrics do not establish complete supporting evidence or answer quality.
-- Agent citations are checked for label resolution, not factual entailment.
-- No reranking or hybrid (keyword + vector) search.
-- Hard page boundaries can split an argument; short fragments and retained
-  headers can add noise.
-- Extraction is not OCR, and full transcription accuracy and reading order are
-  only spot-checked.
+- Citations are checked for label resolution, not factual entailment.
+- The model can skip retrieval; its draft is then withheld, not corrected.
+- The retrieval baseline is a small, deliberately selected partial set.
+- No reranking or hybrid search; hard page boundaries can split an argument.
+- Extraction is not OCR, and transcription accuracy is only spot-checked.
 - Single-document, sequential pipeline; concurrent writers are out of scope.
 
 ## Status and roadmap
 
-**Work in progress.** Implemented: page-aware PDF extraction with diagnostics,
-token-aware chunking, local Ollama embeddings, resumable Chroma indexing,
-retrieval-only search, a reproducible evaluation CLI, and a bounded French
-answer agent using LangChain create_agent backed by LangGraph. Synthetic tests
-cover page metrics, annotation status, persistence, restart, compatibility
-checks, errors, and the guarantee that search never re-embeds documents.
+**Work in progress.** Implemented: the bounded French answer agent (LangChain
+`create_agent` on LangGraph) with its retrieval tool, citation checks, and
+event trace; page-aware PDF extraction; token-aware chunking; local Ollama
+embeddings; resumable Chroma indexing; and a reproducible retrieval evaluation.
 
 Adjacent-page context, reranking, and equivalent-page or graded scoring are
-deferred. Their hypotheses and criteria for resuming are recorded in
-[later improvements](docs/future-improvements.md).
-
-A web interface, multi-agent system, persistent memory and MCP integration
-remain out of scope.
+deferred; see [later improvements](docs/future-improvements.md). A web
+interface, multi-agent system, persistent memory, and MCP are out of scope.
 
 ## Technology
 
-Python 3.12 · uv · pypdf · LangChain text splitters with the Qwen3 tokenizer ·
-LangChain agents / LangGraph · Ollama (`qwen3:8b`, `qwen3-embedding:0.6b`) ·
-Chroma (embedded, cosine) · Ruff · mypy · pytest · GitHub Actions
-
-Runtime dependencies include pypdf, LangChain text splitters and agents,
-langchain-ollama, tokenizers, and Chroma. Chroma's default embedding function
-and telemetry are disabled, and the Ollama URL is restricted to loopback addresses.
+- **Agent:** LangChain `create_agent`, `@tool`, and `wrap_model_call`
+  middleware on a LangGraph graph · langchain-ollama `ChatOllama`
+- **Models:** Ollama `qwen3:8b` (chat, tool calling) and `qwen3-embedding:0.6b`
+- **Retrieval:** Chroma · pypdf · LangChain text splitters with the Qwen3 tokenizer
+- **Tooling:** Python 3.12 · uv · Ruff · mypy · pytest · GitHub Actions
 
 ## Development
 
@@ -231,12 +229,11 @@ uv run --locked mypy
 uv run --locked pytest
 ```
 
-Tests use synthetic PDFs, a generated tokenizer, fake embeddings, and real local
-Chroma persistence; they need neither the corpus nor Ollama. CI runs on Linux.
-See [development](docs/development.md) for the toolchain, full checks, repository
-layout, and dependency maintenance, and [`AGENTS.md`](AGENTS.md) for coding
-conventions. Reusable compatibility lessons are indexed in
-[`docs/knowledge/`](docs/knowledge/README.md).
+Tests need neither the corpus nor Ollama: agent tests run the real graph with
+scripted tool-calling chat models and fake retrieval; pipeline tests use
+synthetic PDFs, fake embeddings, and real local Chroma persistence. See
+[development](docs/development.md) for the full checks, [`AGENTS.md`](AGENTS.md)
+for conventions, and [`docs/knowledge/`](docs/knowledge/README.md) for lessons.
 
 ## Corpus and licensing
 
